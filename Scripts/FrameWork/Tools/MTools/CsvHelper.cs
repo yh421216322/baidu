@@ -1,0 +1,50 @@
+using System;
+using System.IO;
+using System.Reflection;
+using System.Text;
+
+namespace MyGameNamespace
+{
+    public class CsvHelper
+    {
+        public static void Read<T>(string csvPath, Encoding encoding, BindingFlags flags, out T obj, Predicate<string> check)
+        {
+            if (check == null) throw new Exception("??????");
+            // ?????????? ????
+            if (File.Exists(csvPath))
+            {
+                //???????? ??CSV??? ???????
+                using (var reader = new StreamReader(csvPath, encoding))
+                {
+                    obj = default;
+                    //?????? CSV??????1???? Key ???
+                    string[] keys = reader.ReadLine().Split(',');
+                    // ??????? ???????
+                    while (!reader.EndOfStream)
+                    {
+                        //????????? ?????????????????????????
+                        string[] line = reader.ReadLine().Split(',');
+                        // ??????????? ????????????????
+                        if (check(line[0]))
+                        {
+                            // ??÷?????CSV?????????????CSV??????????????
+                            obj = Activator.CreateInstance<T>();
+                            //??????????? ????
+                            int len = line.Length;
+                            var type = typeof(T);
+                            FieldInfo fi = null;
+                            for (int i = 1; i < len; i++)
+                            {
+                                fi = type.GetField(keys[i], flags);
+                                if (fi == null) continue;
+                                ReflectHelper.FiSetValue(line[i],fi , obj);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            else throw new Exception("?????????");
+        }
+    }
+}
