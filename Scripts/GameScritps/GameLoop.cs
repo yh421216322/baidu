@@ -5,79 +5,84 @@ using YourGameNamespace.Combat;
 using YourGameNamespace.Time; 
 using YourGameNamespace.Survivors; 
 using YourGameNamespace.Research; 
-using YourGameNamespace.Exploration; // ExplorationSystem 所需
+using YourGameNamespace.Exploration; // 需要 ExplorationSystem 命名空间
 
 namespace YourGameNamespace
 {
+    // 游戏主循环脚本，负责驱动游戏中各个系统的更新
     public class GameLoop : MonoBehaviour
     {
-        private WorkstationSystem mWorkstationSystem;
-        private CombatSystem mCombatSystem;
-        private DayNightSystem mDayNightSystem; 
-        private SurvivorManagerSystem mSurvivorManagerSystem; 
-        private ResearchSystem mResearchSystem; 
-        private ExplorationSystem mExplorationSystem; // 已添加 ExplorationSystem
+        // 引用各个游戏系统
+        private WorkstationSystem mWorkstationSystem;     // 工作站系统
+        private CombatSystem mCombatSystem;               // 战斗系统
+        private DayNightSystem mDayNightSystem;           // 昼夜系统
+        private SurvivorManagerSystem mSurvivorManagerSystem; // 幸存者管理系统
+        private ResearchSystem mResearchSystem;           // 研究系统
+        private ExplorationSystem mExplorationSystem;     // 探索系统 (已添加)
 
-        void Start()
+        void Start() // Unity生命周期方法，在第一次Update调用前执行
         {
+            // 检查 GameArchitecture 是否已初始化，这是获取系统和模型的前提
             if (GameArchitecture.Interface == null)
             {
-                Debug.LogError("GameLoop 的 Start 调用时 GameArchitecture 尚未初始化。请确保 GameInitializer 先运行。");
-                this.enabled = false; 
+                Debug.LogError("游戏主循环 (GameLoop) 的 Start 方法调用时，GameArchitecture 尚未初始化。请确保 GameInitializer 脚本先于此脚本运行。");
+                this.enabled = false; // 禁用此脚本以防止后续错误
                 return;
             }
             
+            // 从 GameArchitecture 获取各个系统的实例
             mWorkstationSystem = GameArchitecture.Interface.GetSystem<WorkstationSystem>();
-            if (mWorkstationSystem == null) Debug.LogWarning("GameLoop 中未找到 WorkstationSystem。");
+            if (mWorkstationSystem == null) Debug.LogWarning("游戏主循环 (GameLoop) 中未找到工作站系统 (WorkstationSystem)。");
 
             mCombatSystem = GameArchitecture.Interface.GetSystem<CombatSystem>();
-            if (mCombatSystem == null) Debug.LogWarning("GameLoop 中未找到 CombatSystem。");
+            if (mCombatSystem == null) Debug.LogWarning("游戏主循环 (GameLoop) 中未找到战斗系统 (CombatSystem)。");
 
             mDayNightSystem = GameArchitecture.Interface.GetSystem<DayNightSystem>();
-            if (mDayNightSystem == null) Debug.LogWarning("GameLoop 中未找到 DayNightSystem。");
+            if (mDayNightSystem == null) Debug.LogWarning("游戏主循环 (GameLoop) 中未找到昼夜系统 (DayNightSystem)。");
 
             mSurvivorManagerSystem = GameArchitecture.Interface.GetSystem<SurvivorManagerSystem>();
-            if (mSurvivorManagerSystem == null) Debug.LogWarning("GameLoop 中未找到 SurvivorManagerSystem。");
+            if (mSurvivorManagerSystem == null) Debug.LogWarning("游戏主循环 (GameLoop) 中未找到幸存者管理系统 (SurvivorManagerSystem)。");
 
             mResearchSystem = GameArchitecture.Interface.GetSystem<ResearchSystem>(); 
-            if (mResearchSystem == null) Debug.LogWarning("GameLoop 中未找到 ResearchSystem。");
+            if (mResearchSystem == null) Debug.LogWarning("游戏主循环 (GameLoop) 中未找到研究系统 (ResearchSystem)。");
 
-            mExplorationSystem = GameArchitecture.Interface.GetSystem<ExplorationSystem>(); // 初始化 ExplorationSystem
-            if (mExplorationSystem == null) Debug.LogError("GameLoop.Start() 中未找到 ExplorationSystem。请确保它已在 GameArchitecture 中注册。");
+            mExplorationSystem = GameArchitecture.Interface.GetSystem<ExplorationSystem>(); // 初始化探索系统
+            if (mExplorationSystem == null) Debug.LogError("游戏主循环 (GameLoop) 的 Start() 方法中未找到探索系统 (ExplorationSystem)。请确保它已在 GameArchitecture 中正确注册。");
         }
 
-        void Update()
+        void Update() // Unity生命周期方法，每帧调用一次
         {
-            float deltaTime = UnityEngine.Time.deltaTime;
+            float deltaTime = UnityEngine.Time.deltaTime; // 获取自上一帧以来的时间差
 
+            // 依次更新各个游戏系统
             if (mWorkstationSystem != null)
             {
-                mWorkstationSystem.UpdateAllWorkstations(deltaTime);
+                mWorkstationSystem.UpdateAllWorkstations(deltaTime); // 更新所有工作站状态
             }
 
             if (mCombatSystem != null)
             {
-                mCombatSystem.UpdateCombat(deltaTime);
+                mCombatSystem.UpdateCombat(deltaTime); // 更新战斗逻辑
             }
 
             if (mDayNightSystem != null)
             {
-                mDayNightSystem.UpdateDayCycle(deltaTime);
+                mDayNightSystem.UpdateDayCycle(deltaTime); // 更新昼夜循环
             }
 
             if (mSurvivorManagerSystem != null) 
             {
-                mSurvivorManagerSystem.UpdateSurvivorNeeds(deltaTime);
+                mSurvivorManagerSystem.UpdateSurvivorNeeds(deltaTime); // 更新幸存者需求
             }
 
             if (mResearchSystem != null) 
             {
-                mResearchSystem.UpdateResearchProcess(deltaTime);
+                mResearchSystem.UpdateResearchProcess(deltaTime); // 更新研究进度
             }
 
-            if (mExplorationSystem != null) // 调用 UpdateActiveExpeditions
+            if (mExplorationSystem != null) // 调用探索系统的更新方法
             {
-                mExplorationSystem.UpdateActiveExpeditions(deltaTime);
+                mExplorationSystem.UpdateActiveExpeditions(deltaTime); // 更新活动远征的状态
             }
         }
     }

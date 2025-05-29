@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using YourGameNamespace.Enemies;
 using YourGameNamespace.Survivors;
 
-using YourGameNamespace.Framework; // For GameDataModel
+using YourGameNamespace.Framework; // 用于 GameDataModel
 using System;
 
 namespace YourGameNamespace.Combat
@@ -14,17 +14,17 @@ namespace YourGameNamespace.Combat
         private EnemyModel mEnemyModel;
         private SurvivorModel mSurvivorModel;
         private ResourceModel mResourceModel;
-        private GameDataModel mGameDataModel; // 新增 GameDataModel
+        private GameDataModel mGameDataModel; // 新增：游戏数据模型
 
-        public Vector2 BasePosition { get; set; } = Vector2.zero;
-        public float ZombieAttackRange { get; set; } = 1.0f; 
-        public float SurvivorAttackRange { get; set; } = 5.0f; 
-        public int BaseSurvivorAttackPower { get; set; } = 10; // 从 SurvivorAttackPower 重命名
-        public float SurvivorAttackPowerMultiplier { get; set; } = 1.0f; // 新增
-        public GameResourceType AmmoType { get; set; } = GameResourceType.Ammo; 
-        public int AmmoCostPerShot { get; set; } = 1; 
-        private float mTimeSinceLastSurvivorAttack = 0f;
-        private float mSurvivorAttackCooldown = 1f;
+        public Vector2 BasePosition { get; set; } = Vector2.zero; // 基地位置
+        public float ZombieAttackRange { get; set; } = 1.0f; // 僵尸攻击范围
+        public float SurvivorAttackRange { get; set; } = 5.0f; // 幸存者攻击范围
+        public int BaseSurvivorAttackPower { get; set; } = 10; // 基础幸存者攻击力 (从 SurvivorAttackPower 重命名)
+        public float SurvivorAttackPowerMultiplier { get; set; } = 1.0f; // 新增：幸存者攻击力乘数
+        public GameResourceType AmmoType { get; set; } = GameResourceType.Ammo; // 弹药类型
+        public int AmmoCostPerShot { get; set; } = 1; // 每次射击弹药消耗
+        private float mTimeSinceLastSurvivorAttack = 0f; // 自上次幸存者攻击以来的时间
+        private float mSurvivorAttackCooldown = 1f; // 幸存者攻击冷却时间
 
         protected override void OnInit()
         {
@@ -32,18 +32,18 @@ namespace YourGameNamespace.Combat
             mEnemyModel = this.GetModel<EnemyModel>();
             mSurvivorModel = this.GetModel<SurvivorModel>();
             mResourceModel = this.GetModel<ResourceModel>();
-            mGameDataModel = this.GetModel<GameDataModel>(); // 初始化 GameDataModel
+            mGameDataModel = this.GetModel<GameDataModel>(); // 初始化游戏数据模型
             if (mGameDataModel == null) Debug.LogError("战斗系统：游戏数据模型 (GameDataModel) 为空！");
         }
 
         public void SpawnZombieWaveForDay(int day)
         {
-            int baseZombieCount = 3;
-            int zombiesToSpawn = baseZombieCount + (day / 2); // 每2天增加数量
+            int baseZombieCount = 3; // 基础僵尸数量
+            int zombiesToSpawn = baseZombieCount + (day / 2); // 每2天增加僵尸数量
             float healthMultiplier = 1f + (day - 1) * 0.1f; // 僵尸在第一天后每天增加10%的生命值
             float attackMultiplier = 1f + (day - 1) * 0.05f; // 僵尸在第一天后每天增加5%的攻击力
             Vector2 spawnAreaCenter = new Vector2(10 + day * 0.5f, 0); // 随着天数增加，生成点越来越远
-            float spawnRadius = 2f + day * 0.1f;
+            float spawnRadius = 2f + day * 0.1f; // 生成半径
 
             Debug.Log($"生成第 {day} 天的僵尸潮：{zombiesToSpawn} 只僵尸。生命值倍率：{healthMultiplier}，攻击力倍率：{attackMultiplier}");
             for (int i = 0; i < zombiesToSpawn; i++)
@@ -58,7 +58,7 @@ namespace YourGameNamespace.Combat
                 );
                 Zombie zombie = new Zombie(stats, spawnPos, BasePosition);
                 mEnemyModel.AddZombie(zombie);
-                // Debug.Log($"已生成僵尸 {zombie.Id} 于 {spawnPos} (第 {day} 天)"); // 可选的详细日志
+                // Debug.Log($"已生成僵尸 {zombie.Id} 于 {spawnPos} (第 {day} 天)"); // 可选的详细日志：生成僵尸信息
             }
             Debug.Log($"生成后僵尸总数：{mEnemyModel.GetAllZombies().Count}");
         }
@@ -145,7 +145,7 @@ namespace YourGameNamespace.Combat
                                         if (!zombiesToRemove.Contains(targetZombie)) zombiesToRemove.Add(targetZombie);
                                     }
                                 }
-                                else if (targetZombie == null) { break; }
+                                else if (targetZombie == null) { break; } // 如果找不到目标僵尸，则停止攻击循环
                             }
                         }
                         else { Debug.LogWarning("弹药检查通过但消耗资源失败。"); }
@@ -166,7 +166,7 @@ namespace YourGameNamespace.Combat
             float minDist = float.MaxValue;
             foreach (var zombie in mEnemyModel.GetAllZombies())
             {
-                if (zombie.IsDead) continue;
+                if (zombie.IsDead) continue; // 跳过已死亡的僵尸
                 float dist = Vector2.Distance(position, zombie.Position);
                 if (dist < minDist)
                 {
