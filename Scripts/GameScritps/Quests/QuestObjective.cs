@@ -1,4 +1,5 @@
-using UnityEngine; // 用于 Mathf.Min
+using UnityEngine; // 用于 Mathf.Clamp
+using QFramework;  // 用于 BindableProperty
 
 namespace YourGameNamespace.Quests
 {
@@ -22,8 +23,12 @@ namespace YourGameNamespace.Quests
         public ObjectiveType Type { get; private set; } // 目标的类型
         public string TargetId { get; private set; }    // 目标的具体标识符 (例如：资源类型的字符串名称，技术ID，POI的ID等)
         public int RequiredAmount { get; private set; } // 完成目标所需的数量
-        public int CurrentAmount { get; set; }          // 当前已完成的数量
-        public bool IsComplete { get { return CurrentAmount >= RequiredAmount; } } // 目标是否已完成
+
+        // 将 CurrentAmount 修改为 BindableProperty，并设其 set 访问器为 private
+        public BindableProperty<int> CurrentAmount { get; private set; }
+
+        // 修改 IsComplete 属性的getter以依赖 CurrentAmount.Value
+        public bool IsComplete => CurrentAmount.Value >= RequiredAmount;
 
         // 构造函数
         public QuestObjective(string description, ObjectiveType type, string targetId, int requiredAmount)
@@ -32,14 +37,28 @@ namespace YourGameNamespace.Quests
             Type = type;
             TargetId = targetId;
             RequiredAmount = requiredAmount;
-            CurrentAmount = 0; // 初始时，当前数量为0
+            // 在构造函数中初始化 CurrentAmount BindableProperty
+            this.CurrentAmount = new BindableProperty<int>(0); // 初始时，当前数量为0
         }
 
-        // 更新目标进度的方法
-        // 确保当前数量不会超过所需数量 (主要用于收集资源类型的目标，其newCurrentAmount是总量)
-        public void UpdateProgress(int newCurrentAmount)
+        // 用于直接设置当前进度值 (替换旧的 UpdateProgress，如果其行为是设置总量)
+        public void SetCurrentProgress(int progress)
         {
-            CurrentAmount = Mathf.Min(newCurrentAmount, RequiredAmount);
+            CurrentAmount.Value = Mathf.Clamp(progress, 0, RequiredAmount);
         }
+
+        // 用于增加/调整进度 (如果旧的 UpdateProgress 行为是增量式的，则使用此方法)
+        public void AddProgress(int amount)
+        {
+            CurrentAmount.Value = Mathf.Clamp(CurrentAmount.Value + amount, 0, RequiredAmount);
+        }
+
+        // 旧的 UpdateProgress 方法根据其原有逻辑，似乎更接近 SetCurrentProgress 的行为（因为它直接用新值，并用Min确保不超过上限）
+        // 因此，我们将保留 SetCurrentProgress 并考虑移除 UpdateProgress，或将其调整为 AddProgress 的别名（如果需要）。
+        // 为了清晰，这里移除旧的 UpdateProgress 方法，推荐使用 SetCurrentProgress 或 AddProgress。
+        // public void UpdateProgress(int newCurrentAmount)
+        // {
+        //     CurrentAmount.Value = Mathf.Min(newCurrentAmount, RequiredAmount); // 旧逻辑现在由 SetCurrentProgress(Mathf.Min(...)) 或 AddProgress(Mathf.Min(...)-oldValue) 实现
+        // }
     }
 }

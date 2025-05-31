@@ -18,16 +18,16 @@ namespace YourGameNamespace.Quests
     {
         public QuestRewardType Type { get; private set; } // 奖励的类型
         // 奖励目标的标识符 (例如：对于Resource类型，是GameResourceType.ToString()；对于UnlockTech，是TechID；对于UnlockPOI，是POI_ID)
-        public string TargetId { get; private set; } 
+        public string TargetId { get; private set; }
         // 奖励的数量 (例如：奖励资源的数量，生成幸存者的数量)
-        public int Amount { get; private set; } 
+        public int Amount { get; private set; }
 
         // 构造函数
         public QuestReward(QuestRewardType type, string targetId = null, int amount = 0)
         {
             Type = type;
             // 如果奖励类型不需要目标ID (例如，一个通用的士气提升事件或固定奖励)，TargetId可以为null
-            TargetId = targetId; 
+            TargetId = targetId;
             Amount = amount;
         }
     }

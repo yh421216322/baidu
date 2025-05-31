@@ -3,7 +3,7 @@ using UnityEngine.UI; // 用于 UI Text 组件
 using System.Collections.Generic; // 用于 List
 using System.Linq; // 用于 Linq 方法，如 .Any() 和 .Where()
 using QFramework; // 用于事件注册和获取模型 (IController)
-using YourGameNamespace.Quests; // 用于 QuestModel, QuestActivatedEvent 等任务相关类
+using YourGameNamespace.Quests; // 用于 QuestModel, Quest, QuestStatus, etc.
 using YourGameNamespace.Events; // 用于具体的任务事件类
 
 namespace YourGameNamespace.UI
@@ -20,7 +20,7 @@ namespace YourGameNamespace.UI
         private const float NOTIFICATION_DURATION = 3.0f; // 通知消息默认显示时长（秒）
 
         // IController 接口要求实现此方法，返回当前游戏架构的实例
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface; 
+        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
         void Start() // Unity生命周期方法，在第一次Update前执行
         {
@@ -28,30 +28,34 @@ namespace YourGameNamespace.UI
             if (GameArchitecture.Interface == null) {
                 Debug.LogError("任务日志显示 (QuestLogDisplay)：GameArchitecture 尚未初始化。请确保 GameInitializer 脚本先于此脚本运行。");
                 enabled = false; // 禁用此组件以防止错误
+                if (activeQuestsText != null) activeQuestsText.text = "错误：任务系统未初始化";
                 return;
             }
             mQuestModel = this.GetModel<QuestModel>(); // 使用QFramework的扩展方法获取任务数据模型实例
 
-            // 注册对任务相关事件的监听
-            this.RegisterEvent<QuestActivatedEvent>(OnQuestActivated);         // 监听任务激活事件
-            this.RegisterEvent<QuestSucceededEvent>(OnQuestSucceeded);         // 监听任务成功事件
-            this.RegisterEvent<QuestObjectiveCompletedEvent>(OnQuestObjectiveCompleted); // 监听任务目标完成事件
+            if (mQuestModel != null)
+            {
+                // 注册对任务相关事件的监听 (用于通知)
+                this.RegisterEvent<QuestActivatedEvent>(OnQuestActivated).UnRegisterWhenGameObjectDestroyed(this);
+                this.RegisterEvent<QuestSucceededEvent>(OnQuestSucceeded).UnRegisterWhenGameObjectDestroyed(this);
+                this.RegisterEvent<QuestObjectiveCompletedEvent>(OnQuestObjectiveCompleted).UnRegisterWhenGameObjectDestroyed(this);
+
+                // 当任何任务状态更新时，刷新整个列表
+                this.RegisterEvent<Model_QuestStatusUpdatedEvent>(e => RefreshQuestList()).UnRegisterWhenGameObjectDestroyed(this);
+
+                RefreshQuestList(); // 初始刷新
+            }
+            else
+            {
+                Debug.LogError("QuestLogDisplay: 未能获取到 QuestModel！");
+                if (activeQuestsText != null) activeQuestsText.text = "错误：任务系统未初始化";
+            }
 
             if (questNotificationText != null) questNotificationText.text = ""; // 初始化通知文本为空
-            RefreshQuestDisplay(); // 初始刷新一次任务日志显示
         }
 
         void Update() // Unity生命周期方法，每帧调用一次
         {
-            // 更新任务目标进度显示。
-            // 注意：特定目标的更新也可以完全通过事件驱动来实现，以获得更好的性能。
-            // 为简化起见，如果当前有任何活动任务，则定期刷新活动任务列表的显示，
-            // 以便能反映出 CurrentAmount (当前数量) 的变化。
-            if (mQuestModel != null && mQuestModel.ActiveQuests.Any() && UnityEngine.Time.frameCount % 30 == 0) // 大约每秒刷新两次
-            {
-                RefreshActiveQuestsDisplay();
-            }
-
             // 处理通知消息的显示计时
             if (mNotificationTimeLeft > 0)
             {
@@ -67,21 +71,21 @@ namespace YourGameNamespace.UI
         private void OnQuestActivated(QuestActivatedEvent e)
         {
             ShowNotification($"新任务已接取：{e.ActivatedQuest.Title}"); // 显示通知
-            RefreshQuestDisplay(); // 刷新任务日志
+            // RefreshQuestList(); // Model_QuestStatusUpdatedEvent will handle this
         }
 
         // 事件处理：当任务成功完成时调用
         private void OnQuestSucceeded(QuestSucceededEvent e)
         {
             ShowNotification($"任务完成：{e.SucceededQuest.Title}！"); // 显示通知
-            RefreshQuestDisplay(); // 刷新任务日志
+            // RefreshQuestList(); // Model_QuestStatusUpdatedEvent will handle this
         }
         
         // 事件处理：当任务的某个目标完成时调用
         private void OnQuestObjectiveCompleted(QuestObjectiveCompletedEvent e)
         {
             ShowNotification($"目标完成：{e.Objective.Description} (任务：{e.ParentQuest.Title})"); // 显示通知
-            RefreshQuestDisplay(); // 刷新任务日志以更新目标状态
+            // RefreshQuestList(); // Model_QuestStatusUpdatedEvent will handle this
         }
 
         // 在UI上显示一条通知消息
@@ -96,9 +100,15 @@ namespace YourGameNamespace.UI
         }
 
         // 刷新整个任务日志的显示（包括活动任务和已完成任务）
-        void RefreshQuestDisplay()
+        // Renamed from RefreshQuestDisplay to RefreshQuestList
+        void RefreshQuestList()
         {
-            if (mQuestModel == null) return; // 安全检查
+            if (mQuestModel == null)
+            {
+                if(activeQuestsText != null) activeQuestsText.text = "错误：任务数据模型不可用。";
+                if(completedQuestsText != null) completedQuestsText.text = "";
+                return;
+            }
             RefreshActiveQuestsDisplay();
             RefreshCompletedQuestsDisplay(); // 如果 completedQuestsText 已分配，则刷新已完成任务列表
         }
@@ -109,8 +119,8 @@ namespace YourGameNamespace.UI
             if (activeQuestsText == null || mQuestModel == null) return; // 安全检查
 
             System.Text.StringBuilder sb = new System.Text.StringBuilder("--- 当前任务 ---\n");
-            // 直接使用 QuestModel 中维护的 ActiveQuests 列表
-            var activeQuests = mQuestModel.ActiveQuests; 
+            // Get active quests from the model
+            var activeQuests = mQuestModel.AllQuests.Values.Where(q => q.Status.Value == QuestStatus.Active).ToList();
 
             if (!activeQuests.Any()) // 如果没有活动任务
             {
@@ -120,13 +130,16 @@ namespace YourGameNamespace.UI
             {
                 foreach (var quest in activeQuests) // 遍历所有活动任务
                 {
-                    // 注意：quest.Title 和 quest.Description 应已在 QuestModel 中被翻译为中文
+                    // Quest.Title and Quest.Description are assumed to be localized
                     sb.AppendLine($"[{quest.Title}] - {quest.Description}");
+                    sb.AppendLine($"状态：{GetLocalizedQuestStatus(quest.Status.Value)}"); // Localized status
                     foreach (var obj in quest.Objectives) // 遍历任务的每个目标
                     {
-                        string statusMark = obj.IsComplete ? "[√]" : "[ ]"; // 根据目标是否完成显示标记
-                        // 注意：obj.Description 应已在 QuestModel 中被翻译为中文
-                        sb.AppendLine($"  {statusMark} {obj.Description} ({obj.CurrentAmount}/{obj.RequiredAmount})");
+                        // obj.IsComplete directly uses CurrentAmount.Value internally
+                        string statusMark = obj.IsComplete ? "[√]" : "[ ]";
+                        // obj.Description is assumed to be localized
+                        // obj.CurrentAmount.Value for progress
+                        sb.AppendLine($"  {statusMark} 目标：{obj.Description} (进度：{obj.CurrentAmount.Value}/{obj.RequiredAmount})");
                     }
                     sb.AppendLine(); // 添加空行以分隔不同任务
                 }
@@ -141,7 +154,7 @@ namespace YourGameNamespace.UI
 
             System.Text.StringBuilder sb = new System.Text.StringBuilder("--- 已完成的任务 ---\n");
             // 从所有任务中筛选出状态为“成功”的任务
-            var completed = mQuestModel.AllQuests.Values.Where(q => q.Status == QuestStatus.Success).ToList();
+            var completed = mQuestModel.AllQuests.Values.Where(q => q.Status.Value == QuestStatus.Success).ToList();
             
             if (!completed.Any()) // 如果没有已完成的任务
             {
@@ -151,22 +164,39 @@ namespace YourGameNamespace.UI
             {
                 foreach (var quest in completed) // 遍历所有已完成的任务
                 {
-                    // 注意：quest.Title 应已在 QuestModel 中被翻译为中文
-                    sb.AppendLine($"- {quest.Title}");
+                    // quest.Title is assumed to be localized
+                    sb.AppendLine($"- {quest.Title} (状态：{GetLocalizedQuestStatus(quest.Status.Value)})");
                 }
             }
             completedQuestsText.text = sb.ToString(); // 更新UI Text组件的文本
         }
-        
-        // Unity生命周期方法：当对象被销毁时调用
-        void OnDestroy() 
+
+        private string GetLocalizedQuestStatus(QuestStatus status)
         {
-            // 注销之前注册的事件是非常重要的，以防止在对象销毁后事件系统仍然尝试调用其方法，导致错误或内存泄漏。
-            if (GameArchitecture.Interface != null) { // 检查 GameArchitecture 是否仍然存在 (例如，在应用退出时可能已被销毁)
-                this.UnRegisterEvent<QuestActivatedEvent>(OnQuestActivated);
-                this.UnRegisterEvent<QuestSucceededEvent>(OnQuestSucceeded);
-                this.UnRegisterEvent<QuestObjectiveCompletedEvent>(OnQuestObjectiveCompleted);
+            switch (status)
+            {
+                case QuestStatus.NotStarted: return "未开始";
+                case QuestStatus.Active: return "进行中";
+                case QuestStatus.Success: return "已成功";
+                case QuestStatus.Failure: return "已失败";
+                default: return status.ToString();
             }
+        }
+
+        // OnDestroy() is no longer needed for manual unregistration if all events use UnRegisterWhenGameObjectDestroyed
+        // If any events were registered without it, OnDestroy would be needed.
+        // For this refactor, assuming all relevant events will use UnRegisterWhenGameObjectDestroyed.
+        void OnDestroy()
+        {
+            // Manual unregistration is not strictly necessary if all
+            // QFramework event registrations use .UnRegisterWhenGameObjectDestroyed(this)
+            // However, if any were missed or registered differently, they'd go here.
+            // For example, if QuestActivatedEvent etc. were not auto-unregistered:
+            // if (GameArchitecture.Interface != null && mQuestModel != null) {
+            //     this.UnRegisterEvent<QuestActivatedEvent>(OnQuestActivated);
+            //     this.UnRegisterEvent<QuestSucceededEvent>(OnQuestSucceeded);
+            //     this.UnRegisterEvent<QuestObjectiveCompletedEvent>(OnQuestObjectiveCompleted);
+            // }
         }
     }
 }

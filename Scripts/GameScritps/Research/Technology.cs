@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using QFramework; // 添加 using 语句
 
 namespace YourGameNamespace.Research
 {
@@ -20,7 +21,8 @@ namespace YourGameNamespace.Research
         public int ResearchPointCost { get; private set; } // 完成此项研究所需的研究点数（也可能代表时间或努力）
         public List<string> PrerequisiteTechIds { get; private set; } // 前置技术ID列表，表示必须先完成这些技术才能研究此技术
         public List<TechnologyEffectData> Effects { get; private set; } // 此技术完成后将应用的效果列表
-        public ResearchStatus Status { get; set; } // 技术的当前研究状态，由ResearchModel或ResearchSystem管理
+        // 将 Status 修改为 BindableProperty，并设其 set 访问器为 private
+        public BindableProperty<ResearchStatus> Status { get; private set; }
 
         // 构造函数
         public Technology(string id, string name, string description, int cost, List<string> prerequisites, List<TechnologyEffectData> effects)
@@ -31,7 +33,17 @@ namespace YourGameNamespace.Research
             ResearchPointCost = cost;
             PrerequisiteTechIds = prerequisites ?? new List<string>(); // 如果传入null则初始化为空列表
             Effects = effects ?? new List<TechnologyEffectData>();     // 如果传入null则初始化为空列表
-            Status = ResearchStatus.Locked; // 新创建的技术默认为锁定状态
+            // 在构造函数中初始化 Status BindableProperty
+            this.Status = new BindableProperty<ResearchStatus>(ResearchStatus.Locked); // 新创建的技术默认为锁定状态
+        }
+
+        // 添加公共方法 UpdateStatus 来修改 Status 的值
+        public void UpdateStatus(ResearchStatus newStatus)
+        {
+            if (this.Status.Value != newStatus) // 只有当新状态与当前状态不同时才更新，以避免不必要的事件触发
+            {
+                this.Status.Value = newStatus;
+            }
         }
     }
 }

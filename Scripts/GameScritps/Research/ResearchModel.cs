@@ -2,20 +2,21 @@ using QFramework;
 using System.Collections.Generic;
 using System.Linq; // 用于 Linq 操作，例如 .Where() 和 .All()
 using YourGameNamespace.Workstations; // 用于 WorkstationType 枚举
+using YourGameNamespace.Events;       // 用于 Model_TechnologyStatusUpdatedEvent
 
 namespace YourGameNamespace.Research
 {
     // 研究数据模型，存储所有可研究的技术及其状态
-    public class ResearchModel : AbstractModel,ICanGetSystem
+    public class ResearchModel : AbstractModel // 移除 ICanGetSystem，因为不再需要GetSystem<ResearchSystem>()
     {
         // 存储所有已定义技术的字典，键为技术ID
         private Dictionary<string, Technology> mAllTechnologies = new Dictionary<string, Technology>();
-        private ResearchSystem mResearchSystem; // 对研究系统的引用，用于触发状态变更事件
+        // private ResearchSystem mResearchSystem; // 对研究系统的引用，用于触发状态变更事件 -- 已移除
 
         // 模型初始化时调用
         protected override void OnInit()
         {
-            mResearchSystem = this.GetSystem<ResearchSystem>(); // 获取研究系统实例
+            // mResearchSystem = this.GetSystem<ResearchSystem>(); // 获取研究系统实例 -- 已移除
             PopulateInitialTechnologies(); // 填充初始技术数据
             UpdateAllTechnologyStatuses(); // 基于已完成的前置条件，在游戏开始时更新一次所有技术的状态
         }
@@ -36,7 +37,7 @@ namespace YourGameNamespace.Research
                 new List<TechnologyEffectData> { new TechnologyEffectData(TechnologyEffectType.UnlockWorkstation, (float)WorkstationType.ResearchLab, WorkstationType.ResearchLab ) }));
 
             // 添加一个依赖于其他技术的示例技术，用于测试前置条件逻辑
-             mAllTechnologies.Add("TECH_FARM_2", new Technology("TECH_FARM_2", "高级农业", "农场食物产量进一步提高15%。", 100, 
+             mAllTechnologies.Add("TECH_FARM_2", new Technology("TECH_FARM_2", "高级农业", "农场食物产量进一步提高15%。", 100,
                 new List<string> { "TECH_FARM_1" }, // 前置技术ID：TECH_FARM_1
                 new List<TechnologyEffectData> { new TechnologyEffectData(TechnologyEffectType.IncreaseProductionMultiplier, 0.15f, WorkstationType.Farm, GameResourceType.Food) }));
             
@@ -47,8 +48,8 @@ namespace YourGameNamespace.Research
             // 已添加的基础无线电通讯技术 (TECH_RADIO_BASIC)
             mAllTechnologies.Add("TECH_RADIO_BASIC", new Technology(
                 "TECH_RADIO_BASIC", 
-                "基础无线电通讯", 
-                "允许进行初步的远程信号传输。对于寻求外界联系至关重要。", 
+                "基础无线电通讯",
+                "允许进行初步的远程信号传输。对于寻求外界联系至关重要。",
                 30, // 研究点成本
                 null, // 无前置技术条件
                 new List<TechnologyEffectData>() // 此技术本身无直接游戏效果，主要用作任务系统中的标记或前置条件
@@ -87,14 +88,22 @@ namespace YourGameNamespace.Research
         }
 
         // 更新指定ID的技术的状态
-        public void UpdateTechnologyStatus(string techId, ResearchStatus newStatus)
+        public void UpdateTechnologyStatus(string techId, Technology.ResearchStatus newStatus)
         {
-            if (mAllTechnologies.TryGetValue(techId, out var tech)) // 如果技术存在
+            if (mAllTechnologies.TryGetValue(techId, out var techToUpdate)) // 如果技术存在
             {
-                tech.Status = newStatus; // 更新其状态
+                var oldStatus = techToUpdate.Status; // 获取旧状态
+                if (oldStatus != newStatus) // 仅当状态实际改变时才更新并发送事件
+                {
+                    techToUpdate.Status = newStatus; // 更新其状态
+                    this.SendEvent(new Model_TechnologyStatusUpdatedEvent()
+                    {
+                        TechId = techId,
+                        NewStatus = newStatus,
+                        OldStatus = oldStatus
+                    });
+                }
             }
-            // 注意：此处未直接调用 mResearchSystem.NotifyTechnologyStatusChanged(tech); 
-            // 状态的批量更新和通知通常由 UpdateAllTechnologyStatuses 方法处理，以避免重复通知或在不适当的时机通知。
         }
 
         // 遍历所有技术，并根据其已完成的前置条件更新它们的状态
@@ -103,7 +112,6 @@ namespace YourGameNamespace.Research
         {
             foreach (var tech in mAllTechnologies.Values) // 遍历所有技术
             {
-                var oldStatus = tech.Status; // 记录旧状态，以便比较状态是否发生变化
                 if (tech.Status == ResearchStatus.Locked) // 只尝试解锁当前处于“锁定”状态的技术
                 {
                     bool prerequisitesMet = true; // 假设所有前置条件都已满足
@@ -121,14 +129,20 @@ namespace YourGameNamespace.Research
                     }
                     if (prerequisitesMet) // 如果所有前置条件都已满足
                     {
+                        var oldStatus = tech.Status; // 此时 oldStatus 必定是 Locked
                         tech.Status = ResearchStatus.Available; // 将技术状态更新为“可用”
+                        // 由于是从 Locked 变为 Available，状态必然改变，所以发送事件
+                        this.SendEvent(new Model_TechnologyStatusUpdatedEvent()
+                        {
+                            TechId = tech.Id,
+                            NewStatus = tech.Status,
+                            OldStatus = oldStatus
+                        });
                     }
                 }
-                if (oldStatus != tech.Status) // 如果技术状态发生了变化
-                {
-                    // 通过 ResearchSystem 触发一个事件，通知UI或其他系统技术状态已更新
-                    mResearchSystem.NotifyTechnologyStatusChanged(tech);
-                }
+                // 对于其他状态转换（例如 InProgress -> Completed），这些通常由 ResearchSystem 在完成研究时通过调用 UpdateTechnologyStatus 来处理，
+                // UpdateTechnologyStatus 内部会发送事件。
+                // 如果此方法也需要处理其他类型的自动状态更新（例如，因某些条件技术变为不可用），则也应在此处添加相应的事件发送逻辑。
             }
         }
     }

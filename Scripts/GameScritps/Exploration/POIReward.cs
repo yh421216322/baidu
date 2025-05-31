@@ -2,7 +2,7 @@ namespace YourGameNamespace.Exploration
 {
     // POI（兴趣点）奖励的数据结构
     // 使其可序列化，方便在Unity编辑器中配置或通过其他方式（如JSON）加载
-    [System.Serializable] 
+    [System.Serializable]
     public class POIReward
     {
         public GameResourceType ResourceType; // 奖励的资源类型

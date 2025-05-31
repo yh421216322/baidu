@@ -25,7 +25,7 @@ namespace YourGameNamespace.Events
             // 从所有可用的GameResourceType中随机选择一种类型
             GameResourceType foundType = (GameResourceType)Enum.GetValues(typeof(GameResourceType)).GetValue(UnityEngine.Random.Range(0, Enum.GetValues(typeof(GameResourceType)).Length));
             // 随机发现15到50个单位的资源
-            int amountFound = UnityEngine.Random.Range(15, 51); 
+            int amountFound = UnityEngine.Random.Range(15, 51);
             resourceModel.AddResource(foundType, amountFound); // 将发现的资源添加到模型中
             Description = $"发现了一个隐藏的贮藏点！找到了 {amountFound} 单位的 {foundType}。"; // 事件描述：成功发现资源
             Debug.Log(Description);

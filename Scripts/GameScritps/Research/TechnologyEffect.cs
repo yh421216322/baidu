@@ -15,7 +15,7 @@ namespace YourGameNamespace.Research
 
     // 代表技术效果的具体数据
     // [System.Serializable] 属性允许该类的实例在Unity检视面板中被序列化和编辑（如果用作MonoBehaviour的公共字段或列表元素）
-    [System.Serializable] 
+    [System.Serializable]
     public class TechnologyEffectData
     {
         public TechnologyEffectType EffectType; // 效果的类型

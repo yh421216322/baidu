@@ -6,13 +6,13 @@ namespace YourGameNamespace.Exploration
     public class ExpeditionOutcome
     {
         // 远征是否总体成功
-        public bool WasSuccessful { get; set; } = true; 
+        public bool WasSuccessful { get; set; } = true;
         // 本次远征中找到的资源及其数量
         public Dictionary<GameResourceType, int> ResourcesFound { get; private set; } = new Dictionary<GameResourceType, int>();
         // 幸存者状态变化的描述列表 (例如："幸存者A 受伤了", "幸存者B 安然无恙")
-        public List<string> SurvivorStatusChanges { get; private set; } = new List<string>(); 
+        public List<string> SurvivorStatusChanges { get; private set; } = new List<string>();
         // 远征的叙事性日志或摘要，用于向玩家展示发生了什么
-        public string NarrativeLog { get; set; } = ""; 
+        public string NarrativeLog { get; set; } = "";
 
         // 向结果中添加找到的资源
         public void AddResource(GameResourceType type, int amount)

@@ -2,12 +2,12 @@ using UnityEngine;
 using UnityEngine.UI; // 用于 Text UI 组件
 using QFramework;     // QFramework 框架
 using YourGameNamespace.Framework; // 用于 GameDataModel (核心游戏数据模型)
-using YourGameNamespace.Time;     // 用于 DayNightSystem (昼夜系统)
+// using YourGameNamespace.Time; // DayNightSystem is no longer directly used here
 
 namespace YourGameNamespace.UI
 {
     // UI组件，用于显示游戏内的天数、时间进度和基地健康状况
-    public class DayDisplay : MonoBehaviour
+    public class DayDisplay : MonoBehaviour, IController
     {
         // 在Unity检视面板中分配的UI Text组件
         public Text dayText;        // 用于显示当前天数
@@ -16,7 +16,9 @@ namespace YourGameNamespace.UI
 
         // 对所需模型和系统的引用
         private GameDataModel mGameDataModel;
-        private DayNightSystem mDayNightSystem;
+        // private DayNightSystem mDayNightSystem; // Removed
+
+        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
         void Start() // Unity生命周期方法，在第一次Update前执行
         {
@@ -28,58 +30,70 @@ namespace YourGameNamespace.UI
                 return;
             }
             // 获取所需模型和系统的实例
-            mGameDataModel = GameArchitecture.Interface.GetModel<GameDataModel>();
-            mDayNightSystem = GameArchitecture.Interface.GetSystem<DayNightSystem>();
+            mGameDataModel = this.GetModel<GameDataModel>();
 
             // 检查依赖项是否成功获取
             if (mGameDataModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取核心游戏数据模型 (GameDataModel)！");
-            if (mDayNightSystem == null) Debug.LogError("日期显示 (DayDisplay)：未能获取昼夜系统 (DayNightSystem)！");
+            // if (mDayNightSystem == null) Debug.LogError("日期显示 (DayDisplay)：未能获取昼夜系统 (DayNightSystem)！"); // Removed
             if (dayText == null || timeText == null || baseHealthText == null) 
                 Debug.LogError("日期显示 (DayDisplay)：一个或多个必要的UI Text组件（dayText, timeText, baseHealthText）未在Unity检视面板中分配！");
+
+            if (mGameDataModel != null)
+            {
+                mGameDataModel.CurrentDay.RegisterWithInit(day => {
+                    UpdateDayText(day);
+                    CheckGameEndConditions();
+                }).UnRegisterWhenGameObjectDestroyed(this);
+
+                mGameDataModel.BaseHealth.RegisterWithInit(health => {
+                    UpdateBaseHealthText(health);
+                    CheckGameEndConditions();
+                }).UnRegisterWhenGameObjectDestroyed(this);
+            }
         }
 
-        void Update() // Unity生命周期方法，每帧调用一次
+        private void UpdateDayText(int day)
         {
-            // 安全检查，如果必要的UI Text组件未分配，则不执行更新逻辑
-            if (dayText == null || timeText == null || baseHealthText == null) return; 
-
-            if (mGameDataModel != null) // 如果核心游戏数据模型存在
-            {
-                if (mGameDataModel.BaseHealth <= 0) // 如果基地生命值耗尽（游戏结束）
-                {
-                    baseHealthText.text = "基地生命: 0"; // 显示基地生命为0
-                    timeText.text = "游戏结束";        // 显示游戏结束信息
-                    dayText.text = "天数: " + mGameDataModel.CurrentDay; // 显示结束时的天数
-                }
-                else if (mGameDataModel.CurrentDay > 100) // 如果达到胜利条件（例如，存活超过100天）
-                {
-                    baseHealthText.text = "基地生命: " + mGameDataModel.BaseHealth.ToString("F0"); // 显示基地当前生命值
-                    timeText.text = "游戏胜利！";       // 显示胜利信息
-                    dayText.text = "天数: " + mGameDataModel.CurrentDay; // 显示胜利时的天数
-                }
-                else // 正常游戏进行中
-                {
-                    dayText.text = "天数: " + mGameDataModel.CurrentDay; // 显示当前天数
-                    baseHealthText.text = "基地生命: " + mGameDataModel.BaseHealth.ToString("F0"); // 显示当前基地生命值 (F0格式化为无小数整数)
-                    
-                    if (mDayNightSystem != null) // 如果昼夜系统存在
-                    {
-                        // 显示当天时间进度百分比 (F0格式化为无小数整数)
-                        timeText.text = $"时间进度: {mDayNightSystem.TimeOfDayNormalized * 100:F0}%"; 
-                    }
-                    else
-                    {
-                        timeText.text = "时间进度: N/A"; // 如果昼夜系统不存在，则显示不可用
-                    }
-                }
-            }
-            else // 如果核心游戏数据模型不存在
-            {
-                // 显示所有信息为不可用 (N/A)
-                dayText.text = "天数: N/A";
-                baseHealthText.text = "基地生命: N/A";
-                timeText.text = "时间进度: N/A";
-            }
+            if (dayText != null) dayText.text = "天数: " + day;
         }
+
+        private void UpdateBaseHealthText(float health)
+        {
+            if (baseHealthText != null) baseHealthText.text = "基地生命: " + health.ToString("F0");
+        }
+
+        private void CheckGameEndConditions()
+        {
+            if (mGameDataModel == null || timeText == null) return;
+
+            int currentDay = mGameDataModel.CurrentDay.Value;
+            float currentHealth = mGameDataModel.BaseHealth.Value;
+
+            string timeStr = ""; // Default to empty or a placeholder if DayNightSystem interaction is removed
+
+            if (currentHealth <= 0)
+            {
+                timeStr = "游戏结束";
+                // Ensure final state text, though Register callbacks might have updated them
+                if (dayText != null) dayText.text = "天数: " + currentDay;
+                if (baseHealthText != null) baseHealthText.text = "基地生命: 0";
+            }
+            else if (currentDay > 100)
+            {
+                timeStr = "游戏胜利!";
+            }
+            // else // Normal game time display logic (if needed from DayNightSystem)
+            // {
+            //     // IDayNightSystem dayNightSystem = this.GetSystem<IDayNightSystem>(); // Example if DayNightSystem is needed
+            //     // if (dayNightSystem != null)
+            //     // {
+            //     //     // Placeholder for time display logic, e.g., from a BindableProperty in DayNightSystem
+            //     //     // timeStr = $"时间: {dayNightSystem.GetTimeOfDayNormalized() * 100:F0}%";
+            //     // }
+            // }
+            timeText.text = timeStr;
+        }
+
+        // Update() method is removed as UI updates are driven by BindableProperty callbacks
     }
 }

@@ -39,7 +39,7 @@ namespace YourGameNamespace
             int initialAmount = resourceStorage.GetAmount(type); // 获取消耗前的初始数量
 
             // 调用存储对象的消耗方法
-            bool success = resourceStorage.ConsumeResource(type, amount, allowForceConsume); 
+            bool success = resourceStorage.ConsumeResource(type, amount, allowForceConsume);
             
             if (success) // 如果消耗操作成功（或部分成功）
             {
@@ -49,7 +49,7 @@ namespace YourGameNamespace
                 if (amountActuallyConsumed > 0) // 仅当实际消耗量大于0时才发送事件（避免不必要的事件）
                 {
                     // 发送资源变更事件，注意消耗时 ChangeAmount 为负数
-                    this.SendEvent(new ResourceChangedEvent(type, finalAmount, -amountActuallyConsumed)); 
+                    this.SendEvent(new ResourceChangedEvent(type, finalAmount, -amountActuallyConsumed));
                     // Debug.Log($"资源模型：已消耗 {amountActuallyConsumed} 单位 {type}。剩余：{finalAmount}。请求消耗量：{amount}，是否强制消耗：{allowForceConsume}"); // 可选的调试日志
                 }
             }

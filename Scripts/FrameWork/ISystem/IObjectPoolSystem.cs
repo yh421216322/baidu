@@ -10,8 +10,8 @@ namespace MyGameNamespace
     public interface IObjectPoolSystem : QFISystem
     {
 
-        void Unspwan(GameObject go);
-        GameObject Spanw(String name);
+        void Unspawn(GameObject go); // 更正拼写 Unspwan -> Unspawn
+        GameObject Spawn(String name); // 更正拼写 Spanw -> Spawn
         public void UnspawnAll();
 
     }
@@ -24,7 +24,7 @@ namespace MyGameNamespace
         Dictionary<string, SubPool> m_pools = new Dictionary<string, SubPool>();
 
         //取对象
-        public GameObject Spanw(string name)
+        public GameObject Spawn(string name) // 更正拼写 Spanw -> Spawn
         {
             ResourceDir = "";
 
@@ -59,7 +59,7 @@ namespace MyGameNamespace
 
         }
 
-        public void Unspwan(GameObject go)
+        public void Unspawn(GameObject go) // 更正拼写 Unspwan -> Unspawn
         {
 
 

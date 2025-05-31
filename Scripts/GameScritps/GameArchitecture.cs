@@ -19,7 +19,7 @@ namespace YourGameNamespace
         protected override void Init()
         {
             // 注册事件系统 (GEventSystem是具体实现类名)
-            this.RegisterSystem(new GEventSystem()); 
+            this.RegisterSystem(new GEventSystem());
             
             // 注册各种数据模型
             this.RegisterModel(new ResourceModel());      // 资源模型

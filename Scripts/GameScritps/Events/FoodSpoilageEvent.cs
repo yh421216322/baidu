@@ -27,7 +27,7 @@ namespace YourGameNamespace.Events
             if (currentFood > 0) // 只有在有食物的情况下才会发生损失
             {
                 // 随机损失10到当前食物量20%之间的食物（至少损失10，但如果20%小于10则取较大者，即至少11）
-                foodLost = Random.Range(10, Mathf.Max(11, (int)(currentFood * 0.2f))); 
+                foodLost = Random.Range(10, Mathf.Max(11, (int)(currentFood * 0.2f)));
                 foodLost = Mathf.Min(currentFood, foodLost); // 确保损失量不超过当前拥有的食物量
                 
                 // 使用 allowForceConsume 参数，在此上下文中表示“消耗可用量，直至达到指定数量”

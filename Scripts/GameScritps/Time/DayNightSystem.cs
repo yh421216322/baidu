@@ -32,16 +32,18 @@ namespace YourGameNamespace.Time
             if (mEventSystem == null) Debug.LogError("昼夜系统：事件系统 (GEventSystem) 未找到！");
 
             mCurrentTimeInDay = 0f; // 重置当天时间计数器
-            Debug.Log($"昼夜系统已初始化。当前游戏从第 {mGameDataModel.CurrentDay} 天开始。");
-            TriggerNewDayEvents(mGameDataModel.CurrentDay); // 为第一天触发每日事件
+            // 注意：由于 GameDataModel.CurrentDay 现在是 BindableProperty，需要通过 .Value 访问其值
+            Debug.Log($"昼夜系统已初始化。当前游戏从第 {mGameDataModel.CurrentDay.Value} 天开始。");
+            TriggerNewDayEvents(mGameDataModel.CurrentDay.Value); // 为第一天触发每日事件
         }
 
         // 更新昼夜循环，由 GameLoop 每帧调用
         public void UpdateDayCycle(float deltaTime)
         {
             // 如果游戏数据模型不存在，或基地生命值已耗尽（游戏结束），或已达到胜利天数，则停止循环
-            if (mGameDataModel == null || mGameDataModel.BaseHealth <= 0) return; 
-            if (mGameDataModel.CurrentDay > 100) return; // 假设100天为胜利条件
+            // 注意：GameDataModel.BaseHealth 现在是 BindableProperty，需要通过 .Value 访问其值
+            if (mGameDataModel == null || mGameDataModel.BaseHealth.Value <= 0) return;
+            if (mGameDataModel.CurrentDay.Value > 100) return; // 假设100天为胜利条件
 
             mCurrentTimeInDay += deltaTime; // 累加真实时间到当天时间计数器
 
@@ -49,17 +51,17 @@ namespace YourGameNamespace.Time
             if (mCurrentTimeInDay >= SecondsPerDay)
             {
                 mCurrentTimeInDay -= SecondsPerDay; // 或者可以直接设为 mCurrentTimeInDay = 0;
-                mGameDataModel.CurrentDay++;        // 增加天数
-                Debug.Log($"第 {mGameDataModel.CurrentDay} 天已经来临！");
-                this.SendEvent(new DayChangedEvent(mGameDataModel.CurrentDay)); // 发送天数变化事件
+                mGameDataModel.IncrementDay();        // 调用IncrementDay方法来增加天数
+                Debug.Log($"第 {mGameDataModel.CurrentDay.Value} 天已经来临！");
+                this.SendEvent(new DayChangedEvent(mGameDataModel.CurrentDay.Value)); // 发送天数变化事件
 
-                if (mGameDataModel.CurrentDay > 100) // 再次检查是否达到胜利条件
+                if (mGameDataModel.CurrentDay.Value > 100) // 再次检查是否达到胜利条件
                 {
                     Debug.LogWarning("游戏胜利！你已成功存活超过100天！");
                     // 可以在此处发送一个更具体的 GameWonEvent 事件，供其他系统响应
                     return; // 停止昼夜循环
                 }
-                TriggerNewDayEvents(mGameDataModel.CurrentDay); // 为新的一天触发每日事件
+                TriggerNewDayEvents(mGameDataModel.CurrentDay.Value); // 为新的一天触发每日事件
             }
         }
 

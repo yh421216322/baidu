@@ -1,8 +1,8 @@
 using QFramework;
 using System.Collections.Generic;
 using System.Linq;
-
 using System; // 用于 Guid
+using YourGameNamespace.Events; // 用于 ExplorationModel 相关的事件
 
 namespace YourGameNamespace.Exploration
 {
@@ -85,20 +85,23 @@ namespace YourGameNamespace.Exploration
         }
 
         // 添加一个新的远征到活动列表
-        public void AddExpedition(Expedition expedition)
+        public void AddExpedition(Expedition newExpedition) // 参数名与事件一致
         {
-            if (expedition != null && !mActiveExpeditions.Contains(expedition)) // 确保不为空且未重复添加
+            if (newExpedition != null && !mActiveExpeditions.Contains(newExpedition)) // 确保不为空且未重复添加
             {
-                mActiveExpeditions.Add(expedition);
+                mActiveExpeditions.Add(newExpedition);
+                this.SendEvent(new Model_ActiveExpeditionAddedEvent() { ExpeditionData = newExpedition });
             }
         }
 
         // 从活动列表中移除一个远征（通常在远征完成或失败后）
-        public void RemoveExpedition(Expedition expedition)
+        public void RemoveExpedition(Expedition expeditionToRemove) // 参数名与事件一致
         {
-            if (expedition != null)
+            if (expeditionToRemove != null && mActiveExpeditions.Contains(expeditionToRemove))
             {
-                mActiveExpeditions.Remove(expedition);
+                Guid expeditionId = expeditionToRemove.ExpeditionId; // 在移除前获取ID
+                mActiveExpeditions.Remove(expeditionToRemove);
+                this.SendEvent(new Model_ActiveExpeditionRemovedEvent() { ExpeditionId = expeditionId });
             }
         }
         
@@ -115,11 +118,21 @@ namespace YourGameNamespace.Exploration
         }
 
         // 更新指定ID的POI的状态
-        public void UpdatePOIStatus(string poiId, POIStatus newStatus)
+        public void UpdatePOIStatus(string poiId, ExplorationPointOfInterest.POIStatus newStatus)
         {
             if (mPointsOfInterest.TryGetValue(poiId, out var poi))
             {
-                poi.Status = newStatus;
+                var oldStatus = poi.Status;
+                if (oldStatus != newStatus)
+                {
+                    poi.Status = newStatus;
+                    this.SendEvent(new Model_POIStatusUpdatedEvent()
+                    {
+                        PoiId = poiId,
+                        NewStatus = newStatus,
+                        OldStatus = oldStatus
+                    });
+                }
             }
         }
     }

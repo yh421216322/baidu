@@ -1,6 +1,7 @@
 using QFramework;
 using System.Collections.Generic;
 using System; // 用于 Guid (全局唯一标识符)
+using YourGameNamespace.Events; // 用于 Model_WorkstationRegisteredEvent
 
 namespace YourGameNamespace.Workstations
 {
@@ -15,8 +16,10 @@ namespace YourGameNamespace.Workstations
         {
             // 可选：在此处添加一些默认的工作站用于游戏启动时的测试或初始设置。
             // 例如：
-            // AddWorkstation(new Workstation(WorkstationType.Farm));       // 添加一个农场
-            // AddWorkstation(new Workstation(WorkstationType.PowerPlant)); // 添加一个发电厂
+            // Workstation farm = new Workstation(WorkstationType.Farm);
+            // AddWorkstation(farm); // 注意：如果在OnInit中添加，也应考虑是否发送事件
+            // Workstation powerPlant = new Workstation(WorkstationType.PowerPlant);
+            // AddWorkstation(powerPlant);
             // 实际游戏中，工作站的创建通常由玩家操作或游戏逻辑（如GameInitializer）通过WorkstationSystem来完成。
         }
 
@@ -27,6 +30,8 @@ namespace YourGameNamespace.Workstations
             if (workstation != null && !mWorkstations.Exists(w => w.Id == workstation.Id))
             {
                 mWorkstations.Add(workstation); // 将工作站添加到列表
+                // 发送工作站已注册（添加）到模型的事件
+                this.SendEvent(new Model_WorkstationRegisteredEvent() { WorkstationData = workstation });
             }
         }
 
@@ -41,7 +46,7 @@ namespace YourGameNamespace.Workstations
         public List<Workstation> GetAllWorkstations()
         {
             // 返回工作站列表的一个新副本，以防止外部代码直接修改内部列表，从而保证数据的封装性。
-            return new List<Workstation>(mWorkstations); 
+            return new List<Workstation>(mWorkstations);
         }
     }
 }

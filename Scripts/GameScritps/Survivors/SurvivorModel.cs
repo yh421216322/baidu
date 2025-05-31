@@ -1,6 +1,7 @@
 using QFramework;
 using System.Collections.Generic;
 using System; // 用于 Guid (全局唯一标识符)
+using YourGameNamespace.Events; // 用于 Model_SurvivorAddedEvent
 
 namespace YourGameNamespace.Survivors
 {
@@ -19,17 +20,26 @@ namespace YourGameNamespace.Survivors
             // mSurvivors.Add(new Survivor("爱丽丝", new SurvivorAttributes(3, 7, 6), SurvivorProfession.Farmer));   // "爱丽丝" 为示例名称
             // 注意：实际游戏中，幸存者的创建可能由其他系统（如事件系统、任务奖励、或玩家操作）触发。
             // 为了与现有代码行为一致，保留原始的英文名添加：
-            mSurvivors.Add(new Survivor("Bob", new SurvivorAttributes(5, 5, 5), SurvivorProfession.Unassigned));
-            mSurvivors.Add(new Survivor("Alice", new SurvivorAttributes(3, 7, 6), SurvivorProfession.Farmer));
+            // 在OnInit中添加默认幸存者时，也应发送事件，如果这是期望行为。
+            // 为保持与AddSurvivor方法的行为一致，此处也添加事件发送。
+            Survivor bob = new Survivor("Bob", new SurvivorAttributes(5, 5, 5), SurvivorProfession.Unassigned);
+            mSurvivors.Add(bob);
+            this.SendEvent(new Model_SurvivorAddedEvent() { SurvivorData = bob });
+
+            Survivor alice = new Survivor("Alice", new SurvivorAttributes(3, 7, 6), SurvivorProfession.Farmer);
+            mSurvivors.Add(alice);
+            this.SendEvent(new Model_SurvivorAddedEvent() { SurvivorData = alice });
         }
 
         // 添加一个新的幸存者到模型中
-        public void AddSurvivor(Survivor survivor)
+        public void AddSurvivor(Survivor newSurvivor) // 参数名改为 newSurvivor 以匹配事件中的使用
         {
             // 确保幸存者对象不为null且列表中不包含此幸存者（避免重复添加）
-            if (survivor != null && !mSurvivors.Contains(survivor))
+            if (newSurvivor != null && !mSurvivors.Contains(newSurvivor))
             {
-                mSurvivors.Add(survivor);
+                mSurvivors.Add(newSurvivor);
+                // 发送幸存者添加事件
+                this.SendEvent(new Model_SurvivorAddedEvent() { SurvivorData = newSurvivor });
             }
         }
 
@@ -44,7 +54,7 @@ namespace YourGameNamespace.Survivors
         public List<Survivor> GetAllSurvivors()
         {
             // 返回幸存者列表的一个新副本，以防止外部代码直接修改内部列表，从而保证数据的封装性。
-            return new List<Survivor>(mSurvivors); 
+            return new List<Survivor>(mSurvivors);
         }
 
         // 获取所有当前状态为空闲 (Idle) 的幸存者列表
