@@ -7,7 +7,7 @@ using YourGameNamespace.Workstations; // 用于 WorkstationType (在新方法中
 namespace YourGameNamespace.Survivors
 {
     // 幸存者管理器系统，负责处理幸存者的创建、需求更新以及与需求相关的行为（如进食、休息）
-    public class SurvivorManagerSystem : AbstractSystem
+    public class SurvivorManagerSystem : AbstractSystem, ISurvivorManagerSystem
     {
         private ResourceModel mResourceModel; // 资源数据模型
         private SurvivorModel mSurvivorModel;   // 幸存者数据模型
@@ -173,6 +173,57 @@ namespace YourGameNamespace.Survivors
                 Debug.Log($"{survivor.Name.Value} 已从工作站 {oldWorkstationId} 解除分配。");
                 // 可选：发送一个System级的事件，如 System_SurvivorUnassignedFromWorkEvent
                 // this.SendEvent(new System_SurvivorUnassignedFromWorkEvent() { SurvivorId = survivorId, OldWorkstationId = oldWorkstationId });
+            }
+        }
+
+        // 新增方法：设置幸存者的远征状态
+        public void SetSurvivorOnExpeditionStatus(Guid survivorId, bool isOnExpedition)
+        {
+            var survivor = mSurvivorModel.GetSurvivorById(survivorId);
+            if (survivor != null)
+            {
+                if (isOnExpedition)
+                {
+                    // 确保幸存者是空闲的才能开始远征
+                    if (survivor.Status.Value == SurvivorStatus.Idle)
+                    {
+                        survivor.UpdateStatus(SurvivorStatus.OnExpedition);
+                        UnityEngine.Debug.Log($"幸存者 {survivor.Name.Value} 已开始远征。");
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.LogWarning($"试图将非空闲状态的幸存者 {survivor.Name.Value} (状态: {survivor.Status.Value}) 设置为远征中。");
+                    }
+                }
+                else // 从远征返回
+                {
+                    // 只有当幸存者确实在远征中时，才将其设置为空闲
+                    // 其他状态（如受伤）应由调用方（如ExplorationSystem）在此之后单独设置
+                    if (survivor.Status.Value == SurvivorStatus.OnExpedition)
+                    {
+                        survivor.UpdateStatus(SurvivorStatus.Idle);
+                        UnityEngine.Debug.Log($"幸存者 {survivor.Name.Value} 已结束远征，状态恢复为空闲。");
+                    }
+                }
+            }
+            else
+            {
+                UnityEngine.Debug.LogWarning($"SetSurvivorOnExpeditionStatus: 未找到ID为 {survivorId} 的幸存者。");
+            }
+        }
+
+        // 新增方法：通用幸存者状态更新
+        public void UpdateSurvivorStatus(Guid survivorId, SurvivorStatus newStatus)
+        {
+            var survivor = mSurvivorModel.GetSurvivorById(survivorId);
+            if (survivor != null)
+            {
+                survivor.UpdateStatus(newStatus); // 调用Survivor实体自身的UpdateStatus
+                // UnityEngine.Debug.Log($"幸存者 {survivor.Name.Value} 状态已更新为: {newStatus}"); // 可选日志
+            }
+            else
+            {
+                UnityEngine.Debug.LogWarning($"UpdateSurvivorStatus: 未找到ID为 {survivorId} 的幸存者。");
             }
         }
     }
