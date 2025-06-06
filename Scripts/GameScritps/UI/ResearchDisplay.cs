@@ -26,7 +26,8 @@ namespace YourGameNamespace.UI
         public Transform availableTechUIParent;
         public Transform inProgressTechUIParent; // This might be replaced by current research UI
         public Transform completedTechUIParent;
-        public GameObject techUIPrefab;
+        // public GameObject techUIPrefab; // Removed
+        private readonly string techItemPrefabName = "Prefabs/UI/Items/TechItem_PF";
 
         [Header("Current Research Info")]
         public Text currentResearchNameText;
@@ -43,14 +44,34 @@ namespace YourGameNamespace.UI
 
         private void Awake()
         {
-            // Consider removing path-based finding if all are assigned in inspector
-            // If any text fields are optional, null checks should be performed before use
+            // Resource Texts
             foodText = foodText ?? transform.Find("ResourcePanel/FoodText")?.GetComponent<Text>();
             powerText = powerText ?? transform.Find("ResourcePanel/PowerText")?.GetComponent<Text>();
             ammoText = ammoText ?? transform.Find("ResourcePanel/AmmoText")?.GetComponent<Text>();
             medicineText = medicineText ?? transform.Find("ResourcePanel/MedicineText")?.GetComponent<Text>();
             researchPointsText = researchPointsText ?? transform.Find("ResourcePanel/ResearchPointsText")?.GetComponent<Text>();
             electronicPartsText = electronicPartsText ?? transform.Find("ResourcePanel/ElectronicPartsText")?.GetComponent<Text>();
+
+            // Current Research Info Texts & Slider
+            // Assuming these are direct children or part of a "CurrentResearchInfoPanel" type object.
+            // Using direct names as per typical setup. Adjust paths if they are nested deeper.
+            currentResearchNameText = currentResearchNameText ?? transform.Find("CurrentResearchNameText_Element")?.GetComponent<Text>();
+            currentResearchDescriptionText = currentResearchDescriptionText ?? transform.Find("CurrentResearchDescriptionText_Element")?.GetComponent<Text>();
+            researchProgressSlider = researchProgressSlider ?? transform.Find("ResearchProgressSlider_Element")?.GetComponent<Slider>();
+            researchProgressPercentageText = researchProgressPercentageText ?? transform.Find("ResearchProgressPercentageText_Element")?.GetComponent<Text>();
+
+            // Null checks for all fields
+            if (foodText == null) Debug.LogWarning("ResearchDisplay: foodText not found or linked (optional).");
+            if (powerText == null) Debug.LogWarning("ResearchDisplay: powerText not found or linked (optional).");
+            if (ammoText == null) Debug.LogWarning("ResearchDisplay: ammoText not found or linked (optional).");
+            if (medicineText == null) Debug.LogWarning("ResearchDisplay: medicineText not found or linked (optional).");
+            if (researchPointsText == null) Debug.LogError("ResearchDisplay: researchPointsText not found or linked.");
+            if (electronicPartsText == null) Debug.LogWarning("ResearchDisplay: electronicPartsText not found or linked (optional).");
+
+            if (currentResearchNameText == null) Debug.LogError("ResearchDisplay: currentResearchNameText not found or linked.");
+            if (currentResearchDescriptionText == null) Debug.LogWarning("ResearchDisplay: currentResearchDescriptionText not found or linked (optional).");
+            if (researchProgressSlider == null) Debug.LogError("ResearchDisplay: researchProgressSlider not found or linked.");
+            if (researchProgressPercentageText == null) Debug.LogError("ResearchDisplay: researchProgressPercentageText not found or linked.");
         }
 
         void Start()
@@ -71,16 +92,16 @@ namespace YourGameNamespace.UI
             if (mResearchSystem == null) Debug.LogError("ResearchDisplay: IResearchSystem not found.");
             if (mResourceModel == null) Debug.LogError("ResearchDisplay: ResourceModel not found.");
             if (_objectPoolSystem == null) Debug.LogError("ResearchDisplay: IObjectPoolSystem not found.");
-            if (techUIPrefab == null) Debug.LogError("ResearchDisplay: techUIPrefab not assigned.");
+            // if (techUIPrefab == null) Debug.LogError("ResearchDisplay: techUIPrefab not assigned."); // Removed check for public field
 
 
             // Register for events and BindableProperty changes
-            this.RegisterEvent<Model_TechnologyStatusUpdatedEvent>(e => RefreshTechnologyList()).UnRegisterWhenGameObjectDestroyed(this);
+            this.RegisterEvent<Model_TechnologyStatusUpdatedEvent>(e => RefreshTechnologyList()).UnRegisterWhenGameObjectDestroyed(this.gameObject); // Already correct
 
             if (mResearchSystem != null)
             {
-                mResearchSystem.CurrentlyResearching.RegisterWithInit(UpdateCurrentResearchInfo).UnRegisterWhenGameObjectDestroyed(this);
-                mResearchSystem.CurrentResearchProgressNormalized.RegisterWithInit(UpdateResearchProgressUI).UnRegisterWhenGameObjectDestroyed(this);
+                mResearchSystem.CurrentlyResearching.RegisterWithInit(UpdateCurrentResearchInfo).UnRegisterWhenGameObjectDestroyed(this.gameObject); // Already correct
+                mResearchSystem.CurrentResearchProgressNormalized.RegisterWithInit(UpdateResearchProgressUI).UnRegisterWhenGameObjectDestroyed(this.gameObject); // Already correct
             }
 
             RefreshResourceTexts(); // Initial resource text update
@@ -103,9 +124,9 @@ namespace YourGameNamespace.UI
 
         public void RefreshTechnologyList()
         {
-            if (mResearchModel == null || _objectPoolSystem == null || techUIPrefab == null)
+            if (mResearchModel == null || _objectPoolSystem == null) // Removed techUIPrefab from check
             {
-                Debug.LogError("ResearchDisplay: Cannot refresh technology list due to missing dependencies.");
+                Debug.LogError("ResearchDisplay: Cannot refresh technology list due to missing dependencies (Model or ObjectPoolSystem).");
                 return;
             }
 
@@ -142,7 +163,7 @@ namespace YourGameNamespace.UI
 
             foreach (Technology tech in techs)
             {
-                GameObject techItemGO = _objectPoolSystem.Spawn("UI/TechDisplayItem");
+                GameObject techItemGO = _objectPoolSystem.Spawn(techItemPrefabName);
                 if (techItemGO != null)
                 {
                     techItemGO.SetActive(true);
@@ -162,7 +183,7 @@ namespace YourGameNamespace.UI
                 }
                 else
                 {
-                    Debug.LogError("ResearchDisplay: Failed to spawn 'UI/TechDisplayItem' from object pool.");
+                    Debug.LogError($"ResearchDisplay: Failed to spawn '{techItemPrefabName}' from object pool.");
                 }
             }
         }

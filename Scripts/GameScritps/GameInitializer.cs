@@ -1,4 +1,4 @@
-using UnityEngine;
+using UnityEngine; // Ensure this is present
 using YourGameNamespace;
 using YourGameNamespace.Combat;
 using YourGameNamespace.Survivors;
@@ -7,6 +7,8 @@ using YourGameNamespace.Workstations;
 // 游戏初始化器，负责在游戏启动时进行必要的设置和初始化工作
 public class GameInitializer : MonoBehaviour
     {
+        public Transform baseMarker; // 用于在Inspector中拖拽一个场景中的对象来标记基地位置
+
         void Awake() // Unity生命周期方法，在对象实例化后立即调用
         {
             // 这行代码会调用 QFramework 框架中 Architecture<T> 类的 MakeSureArchitecture 方法，
@@ -51,12 +53,20 @@ public class GameInitializer : MonoBehaviour
             // 设置战斗系统 (CombatSystem) 的基地位置
             if (combatSystem != null)
             {
-                 combatSystem.BasePosition = new Vector2(0,0); // 将基地位置设为坐标原点(0,0)
-                 // Debug.Log("游戏初始化器：已为战斗系统设置基地位置。"); // 取消注释此行以在控制台输出日志，有助于调试但可能产生过多信息
+                if (baseMarker != null)
+                {
+                    combatSystem.BasePosition = baseMarker.position;
+                    Debug.Log($"游戏初始化器：已从 baseMarker 设置战斗系统的基地位置为: {baseMarker.position}");
+                }
+                else
+                {
+                    combatSystem.BasePosition = Vector2.zero; // 保留默认值或设置一个明确的默认
+                    Debug.LogWarning("游戏初始化器：场景中未配置 baseMarker Transform。战斗系统基地位置将使用默认值 (Vector2.zero)。");
+                }
             }
             else
             {
-                Debug.LogError("游戏初始化器：战斗系统 (CombatSystem) 未找到（为null）！无法设置基地位置。");
+                Debug.LogError("游戏初始化器：战斗系统 (CombatSystem) 为空！无法设置基地位置。");
             }
             
             // 幸存者需求相关的测试代码 (可选 - 如果需要测试特定需求逻辑，可以取消注释相关代码)

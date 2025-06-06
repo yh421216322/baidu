@@ -255,7 +255,7 @@ Assets/
 
 我们需要一个持久化的GameObject来承载全局的游戏管理脚本，这些脚本将负责初始化和驱动整个游戏的QFramework架构。
 
-1.  **创建空GameObject**:
+1.  **创建空GameObject (`_GameManager_`)**:
     *   在 `Hierarchy` (层级) 窗口的空白区域右键。
     *   从上下文菜单中选择 `Create Empty`。
     *   一个新的名为 "GameObject" 的对象会出现在Hierarchy窗口中。选中它。
@@ -264,12 +264,21 @@ Assets/
 
 2.  **挂载核心脚本到 `_GameManager_`**:
     *   确保 `_GameManager_` GameObject在Hierarchy窗口中仍处于选中状态。
-    *   在 `Inspector` (检查器) 窗口中，找到最下方的 "Add Component" (添加组件) 按钮，点击它。
-    *   会弹出一个组件搜索框。在搜索框中输入 `GameInitializer`。
-    *   当 `GameInitializer` 脚本 (它应该位于 `Assets/_Project/Scripts/GameCore/` 目录下，但Unity的搜索通常能直接找到，只要它没有编译错误) 出现在搜索结果列表中时，点击它。这会将 `GameInitializer (Script)` 组件添加到 `_GameManager_` GameObject上。
-    *   再次点击 "Add Component" 按钮。
-    *   在搜索框中输入 `GameLoop`。
-    *   从搜索结果中选择 `GameLoop` 脚本并添加。
+    *   **挂载 `GameInitializer.cs`**:
+        1.  在 `Inspector` (检查器) 窗口中，找到最下方的 "Add Component" (添加组件) 按钮，点击它。
+        2.  会弹出一个组件搜索框。在搜索框中输入 `GameInitializer`。
+        3.  当 `GameInitializer` 脚本 (它应该位于 `Assets/_Project/Scripts/GameCore/` 目录下，但Unity的搜索通常能直接找到，只要它没有编译错误) 出现在搜索结果列表中时，点击它。这会将 `GameInitializer (Script)` 组件添加到 `_GameManager_` GameObject上。
+    *   **挂载 `GameLoop.cs`**:
+        1.  再次点击 `_GameManager_` GameObject的 `Inspector` 窗口中的 "Add Component" 按钮。
+        2.  在搜索框中输入 `GameLoop`。
+        3.  从搜索结果中选择 `GameLoop` 脚本并添加。
+    *   **配置 `GameInitializer` 的 `Base Marker` 字段 (新增步骤)**:
+        1.  **创建标记对象**: 在 `Hierarchy` (层级) 窗口中，右键 -> `Create Empty`。将这个新的空GameObject命名为 `_BaseLocationMarker_`。
+        2.  **定位标记对象**: 选中 `_BaseLocationMarker_`。在 `Inspector` 窗口的 `Transform` 组件中，将其 `Position` (位置) 设置为您希望的基地中心在游戏世界中的坐标。对于一个2D项目，您可能主要调整X和Y值，Z值通常为0或一个固定的UI层级值。例如，可以先保持 `X:0, Y:0, Z:0`。
+        3.  **链接到GameInitializer**: 在 `Hierarchy` 窗口中，选中 `_GameManager_` GameObject。
+        4.  在 `Inspector` 窗口中找到 `GameInitializer (Script)` 组件。您会看到一个名为 `Base Marker` (类型为 `Transform`) 的公共字段。
+        5.  从 `Hierarchy` 窗口中，将 `_BaseLocationMarker_` GameObject **拖拽**到 `GameInitializer (Script)` 组件的 `Base Marker` 字段上。
+        6.  **说明**: 这个 `_BaseLocationMarker_` 的位置 (`transform.position`) 将在游戏启动时被 `GameInitializer` 用来设置 `CombatSystem` 中的基地中心位置 (`BasePosition`)。这使得您可以方便地在场景编辑器中直观地调整基地的逻辑位置。
 
 3.  **理解核心脚本的作用**:
     *   `GameInitializer.cs`: 这个脚本是QFramework架构的启动入口。通常，在其 `Awake()` 或 `Start()` 方法中（具体看脚本实现，通常是 `Awake()` 以确保尽早执行），它会负责创建并初始化游戏的总架构 (例如，`GameArchitecture.Instance = new YourGameArchitecture();`)，然后注册所有的全局Systems (系统) 和Models (数据模型)。这是整个游戏能够按照QFramework模式运行起来的**第一步**，也是最关键的一步。
@@ -1041,7 +1050,7 @@ Assets/
 
 *   **战斗系统 (CombatSystem, EnemyModel)**:
     *   **功能**: `CombatSystem` 负责处理所有战斗相关的计算和状态变更，例如幸存者对敌人的攻击、敌人对幸存者或基地的攻击、伤害计算（可能考虑武器、护甲、科技加成等）、目标选择逻辑、战斗事件的触发（如敌人死亡）。`EnemyModel` 存储当前战场上所有敌人的数据。
-    *   **配置**: 战斗参数（如基础攻击力、防御力、伤害公式、暴击率等）可能在 `CombatSystem` 内部定义，或者与幸存者/敌人的属性关联。武器或技能的特定效果也在这里处理。某些全局战斗参数（如之前提到的 `SurvivorAttackPowerMultiplier`）可能由 `CombatSystem` 的 `BindableProperty` 或可配置字段提供。
+    *   **配置**: 战斗参数（如基础攻击力、防御力、伤害公式、暴击率等）可能在 `CombatSystem` 内部定义，或者与幸存者/敌人的属性关联。武器或技能的特定效果也在这里处理。某些全局战斗参数（如之前提到的 `SurvivorAttackPowerMultiplier`）可能由 `CombatSystem` 的 `BindableProperty` 或可配置字段提供。`CombatSystem` 的 `BasePosition` 字段现在可以通过 `GameInitializer` 的 `baseMarker` Transform 在Inspector中配置。僵尸的预制件路径 (`zombiePrefabName`) 在 `CombatSystem.SpawnZombieWaveForDay` 方法中硬编码，需要确保预制件位于 `Resources` 文件夹下对应的路径。
 
 *   **随机事件系统 (GEventSystem, EventModel)**:
     *   **功能**: `GEventSystem` (通常指导演系统或全局事件系统) 负责在游戏过程中按一定规则（如满足特定条件、按概率、按固定时间间隔或冷却时间）触发各种随机事件。`EventModel` 可能用来存储当前正在处理的随机事件或事件历史。各种具体的随机事件脚本（如 `FoodSpoilageEvent`, `SurvivorSicknessEvent` 等，它们派生自一个共同的 `RandomEvent` 基类）包含各自事件被触发时的具体执行逻辑（`Execute` 方法）。
@@ -1054,8 +1063,8 @@ Assets/
 **如何找到并修改系统配置**:
 1.  **确定哪个系统**: 根据您想调整的功能，确定它属于哪个系统。
 2.  **检查System脚本**: 打开对应的System脚本 (例如 `Assets/_Project/Scripts/GameCore/Time/DayNightSystem.cs`)。查看其顶部是否有 `public` 或 `[SerializeField]` 标记的字段，这些是可能在Inspector中配置的。
-3.  **找到GameObject**: 如果该System是在场景中运行的（**本项目中，大部分System是通过 `GameInitializer` 注册为非MonoBehaviour的类，直接在代码中配置。少数如 `DayNightSystem` 如果被设计为MonoBehaviour，则会挂载在场景中的某个GameObject上，通常是 `_GameManager_` 或一个专门的 `TimeManager` 对象**）。
-4.  **修改Inspector**: 如果System是MonoBehaviour并挂载在GameObject上，选中该GameObject，在 `Inspector` 窗口找到对应的脚本组件，修改其暴露出的字段值。
+3.  **找到GameObject**: 如果该System是在场景中运行的（**本项目中，大部分System是通过 `GameInitializer` 注册为非MonoBehaviour的类，直接在代码中配置。少数如 `DayNightSystem` 如果被设计为MonoBehaviour，则会挂载在场景中的某个GameObject上，通常是 `_GameManager_` 或一个专门的 `TimeManager` 对象**）。`GameInitializer` 自身也挂载在 `_GameManager_` 上，并且现在有一个 `Base Marker` 字段可配置。
+4.  **修改Inspector**: 如果System是MonoBehaviour并挂载在GameObject上，或者如 `GameInitializer` 一样有可配置字段，选中该GameObject，在 `Inspector` 窗口找到对应的脚本组件，修改其暴露出的字段值。
 5.  **代码配置**: 对于绝大多数系统逻辑和核心数据（如科技树、任务链、工作站参数、建造成本、事件触发条件等），它们更可能是在对应Model或System的初始化方法中通过代码定义的（例如在 `OnInit()` 或 `PopulateInitial...()` 方法中，或者直接在类的构造函数或字段初始化器中）。这种情况下，您需要直接修改C#代码来调整这些配置。
 
 ## 第五部分：如何扩展或修改 (非常初步的指引)
@@ -1067,8 +1076,8 @@ Assets/
     2.  让这个类继承自 `RandomEvent` 基类。
     3.  实现构造函数（在其中设置事件的 `Title` 属性，也可设置基础概率 `BaseChance`、冷却时间 `Cooldown` 等，如果基类支持的话）。
     4.  重写 (override) `Execute(IArchitecture architecture)` 方法。在这个方法中，使用 `architecture.GetModel<T>()` 和 `architecture.GetSystem<T>()` 来获取需要交互的数据模型和系统，然后编写事件的具体逻辑（例如，改变某个资源数量、修改一个幸存者的状态、触发一个新的UI提示等）。最后，务必设置事件的 `Description` 属性，用以向玩家解释发生了什么。
-    5.  找到 `GEventSystem.cs` (或类似名称的随机事件管理系统)。在其初始化方法（可能是 `OnInit` 或构造函数）中，找到一个名为 `mEventFactories` (或类似名称，通常是一个 `List<Func<RandomEvent>>`) 的列表或字典。
-    6.  将您的新事件的创建委托（通常是 `() => new MyNewRandomEvent()`）添加到这个集合中，这样随机事件系统才能在合适的时机考虑触发您的新事件。
+    5.  找到 `GEventSystem.cs` (即 `EventSystem.cs`)。在其 `OnInit()` 方法中，找到 `mEventFactories` 列表。
+    6.  将您的新事件的创建委托（例如 `() => new MyNewRandomEvent()`）添加到 `mEventFactories.Add(...)`。
 
 *   **添加新的科技**:
     1.  打开 `Assets/_Project/Scripts/GameCore/Research/ResearchModel.cs` 文件。
@@ -1091,8 +1100,13 @@ Assets/
     1.  打开定义 `WorkstationType` 枚举的文件 (很可能在 `Assets/_Project/Scripts/GameCore/Workstations/Workstation.cs` 内部，或者一个共享的枚举文件如 `GameEnums.cs` 或 `GameEvents.cs`)，在枚举中添加新的工作站类型名称。
     2.  打开 `Assets/_Project/Scripts/GameCore/Workstations/Workstation.cs` 文件。在其构造函数 (`public Workstation(WorkstationType type, ...)` 或类似的初始化方法) 中，为您的新 `WorkstationType` 添加一个 `case` 分支（如果使用 `switch` 语句的话），或者相应的 `if/else if` 逻辑，来设置这个新类型工作站的特有参数，例如生产周期 (`ProductionCycleTime`)、产出的资源类型 (`OutputResourceType`) 和数量 (`OutputAmountPerCycle`)、最大幸存者容量 (`MaxSurvivorSlots`) 等。
     3.  打开 `Assets/_Project/Scripts/GameCore/Workstations/WorkstationSystem.cs` 文件。在其 `OnInit()` 方法中，找到名为 `mWorkstationBuildCosts` 的字典，为您的新工作站类型添加一条建造成本记录，指定需要的资源类型 (`GameResourceType`) 和数量。
-    4.  （可选）如果新类型的工作站有独特的UI显示需求（例如，不同于现有类型的图标或特殊信息），您可能需要创建或修改对应的 `WorkstationListItemUI.cs` 脚本或其预制件 (`WorkstationItem_PF`)。
-    5.  （可选）如果新工作站引入了全新的生产逻辑或交互方式，您可能还需要在 `Workstation.cs` 中添加新的方法，并在 `WorkstationSystem.cs` 中调用它们。
+    4.  **创建新的工作站UI预制件**: 参考 **第二部分 2.5 (B) 工作站列表项预制件 (`WorkstationItem_PF`)** 的步骤，创建一个新的预制件或复制并修改现有预制件，以反映新工作站的视觉特征和所需信息。确保其上的 `WorkstationListItemUI.cs` 脚本能正确处理新类型（如果需要特殊显示的话）。
+    5.  **(重要)** 如果您希望新的工作站类型能被建造，您还需要更新允许玩家建造工作站的UI（例如，一个建筑菜单）。这可能涉及到修改该UI的控制脚本，以将新的 `WorkstationType` 添加到可建造列表中，并确保它能正确触发 `BuildWorkstationCommand`。
+
+*   **修改敌人 (Zombie)**:
+    *   **属性与行为**: 敌人的基础属性 (生命、攻击、速度) 在 `CombatSystem.cs` 的 `SpawnZombieWaveForDay` 方法中根据天数动态生成。僵尸的移动逻辑在 `Zombie.cs` (`Move` 方法) 中，攻击逻辑在 `CombatSystem.cs` 中处理。
+    *   **视觉表现**: 僵尸的视觉由 `Zombie_PF` 预制件 (`Assets/_Project/Prefabs/Enemies/Zombie_PF.prefab`) 决定。您可以修改此预制件来改变僵尸的外观。其行为由挂载的 `ZombieView.cs` 脚本驱动，该脚本将其逻辑数据 (`Zombie.cs`) 的状态（如位置）同步到场景中的Transform。
+    *   **生成路径**: `CombatSystem.cs` 中的 `zombiePrefabName` 变量硬编码为 `"Prefabs/Enemies/Zombie_PF"`。这意味着Unity会从项目中的任何 `Resources` 文件夹下查找路径为 `Prefabs/Enemies/Zombie_PF.prefab` 的预制件。**因此，您必须确保将 `Zombie_PF.prefab` 放置在例如 `Assets/Resources/Prefabs/Enemies/` 目录下。** 如果您想更改预制件的名称或其在 `Resources` 下的路径，必须同步修改 `CombatSystem.cs` 中的这个字符串。
 
 *   **一般性建议**:
     *   **理解模块职责**: 在进行任何修改之前，花点时间理解您要修改的功能主要由哪个Model负责存储数据，由哪个System负责处理相关逻辑，以及哪个UI脚本负责显示和用户交互。这有助于您在正确的位置进行修改。
@@ -1112,26 +1126,27 @@ Assets/
     1.  **Console错误**: 始终第一步检查Unity的 `Console` (控制台) 窗口是否有任何红色错误或相关黄色警告。这些信息往往直接指向问题根源。
     2.  **脚本挂载**: 确认相关的UI Controller脚本 (例如 `DayDisplay.cs`, `SurvivorDisplay.cs`) 是否已经正确地附加到了场景中对应的GameObject上 (例如 `DayDisplay_Panel`, `SurvivorDisplay_Panel`)。
     3.  **Inspector字段链接**:
-        *   **UI元素**: 选中挂载了UI Controller脚本的GameObject，检查其在 `Inspector` 窗口中暴露出的公共字段 (如 `dayText`, `survivorItemPrefab`, `survivorListContainer` 等) 是否都已正确链接了场景中的UI元素或Project中的预制件。如果某个字段显示为 "None (Type Mismatch)" 或就是空的 "None"，那么脚本将无法操作该UI元素。
-        *   **列表项预制件内部**: 如果是列表项UI (如 `SurvivorListItemUI`) 的问题，需要双击进入该预制件的编辑模式，选中挂载了列表项脚本的根GameObject，检查其内部的文本、滑动条等UI元素是否也正确链接到了脚本的字段上。
+        *   **UI元素**: 选中挂载了UI Controller脚本的GameObject，检查其在 `Inspector` 窗口中暴露出的公共字段 (如 `dayText`, `survivorItemPrefab`, `survivorListContainer` 等) 是否都已正确链接了场景中的UI元素或Project中的预制件。如果某个字段显示为 "None (Type Mismatch)" 或就是空的 "None"，那么脚本将无法操作该UI元素。**这是导致UI不更新的最常见原因之一。**
+        *   **列表项预制件内部**: 如果是列表项UI (如 `SurvivorListItemUI.cs`, `TechDisplayItem.cs`) 的问题，需要双击进入该预制件的编辑模式，选中挂载了列表项脚本的根GameObject，检查其内部的文本、滑动条等UI元素是否也正确链接到了脚本的字段上。
     4.  **GameInitializer与数据初始化**:
-        *   确认场景中存在一个激活的GameObject挂载了 `GameInitializer.cs` 脚本，并且这个脚本成功执行了。`GameInitializer` 负责注册所有的Models和Systems。
-        *   检查对应的数据模型 (Model) 的 `OnInit()` 方法（或 `PopulateInitialData()` 等类似方法）是否被调用，以及是否正确地填充了初始数据。如果Model中就没有数据，UI自然无法显示。
+        *   确认场景中存在一个激活的GameObject（例如 `_GameManager_`）挂载了 `GameInitializer.cs` 脚本，并且这个脚本成功执行了（其 `Awake` 或 `Start` 方法中的日志应出现在Console中）。`GameInitializer` 负责注册所有的Models和Systems。
+        *   检查对应的数据模型 (Model) 的 `OnInit()` 方法（或 `PopulateInitialData()` 等类似方法）是否被调用，以及是否正确地填充了初始数据。如果Model中就没有数据（例如，没有初始幸存者、科技等），UI自然无法显示这些数据。
     5.  **事件与绑定**:
         *   **事件驱动**: 如果UI更新依赖于QFramework事件，请确认事件是否在正确时机被发送 (`this.SendEvent()`)，以及UI脚本是否正确注册监听了该事件 (`this.RegisterEvent<T>()`)，并且事件类型完全匹配。
-        *   **BindableProperty**: 如果UI更新依赖于 `BindableProperty<T>`，请确认UI脚本是否正确地调用了 `.RegisterWithInit(callback)` 或 `.Register(callback)` 来订阅其变化，并且回调方法 (`callback`) 中的UI更新逻辑是否正确。同时，确保在 `OnDestroy()` 中对这些绑定进行了解注册 (`.UnRegister()`)。
-    6.  **数据源确认**: 使用 `Debug.Log()` 在UI脚本的 `Start()` 或数据更新回调中打印从Model获取到的数据，确认数据本身是否符合预期。
+        *   **BindableProperty**: 如果UI更新依赖于 `BindableProperty<T>`，请确认UI脚本是否正确地调用了 `.RegisterWithInit(callback)` 或 `.Register(callback)` 来订阅其变化，并且回调方法 (`callback`) 中的UI更新逻辑是否正确。同时，确保在 `OnDestroy()` (对于MonoBehaviour脚本如UI Controllers) 或使用 `.UnRegisterWhenGameObjectDestroyed(this.gameObject)` 来自动解注册这些绑定，以防止内存泄漏或空引用。
+    6.  **数据源确认**: 使用 `Debug.Log()` 在UI脚本的 `Start()` 或数据更新回调中打印从Model获取到的数据，或者直接打印 `BindableProperty.Value`，确认数据本身是否符合预期。
 
 *   **点击UI按钮没有反应**:
-    1.  **Console错误**: 老规矩，先看Console。
+    1.  **Console错误**: 再次强调，首先检查Console是否有错误。
     2.  **按钮OnClick事件链接**: 选中场景中的按钮GameObject，在 `Inspector` 窗口找到 `Button` 组件。展开其 `OnClick()` 事件列表。
         *   确保列表中至少有一个条目。
-        *   该条目的第一个字段（通常显示为 "RuntimeOnly"）应该指向挂载了处理该按钮点击的脚本的GameObject (例如，某个UI Panel)。
-        *   第二个下拉菜单应该选择了正确的脚本组件，然后是该脚本中期望被调用的 `public` 方法 (例如 `MyDisplayScript.OnStartResearchButtonClicked`)。
-        *   如果方法需要参数，确保参数已正确配置。
-    3.  **UI Controller方法逻辑**: 检查被按钮调用的那个UI Controller方法内部的逻辑。它是否正确地构建并发送了Command (`this.SendCommand(new MyCommand())`)？
-    4.  **Command执行逻辑**: 打开对应的Command脚本，检查其 `OnExecute()` 方法。它是否能正确获取到所需的System (`this.GetSystem<MySystem>()`)？System的引用是否为空？
-    5.  **System方法逻辑**: Command调用的System方法内部是否有条件判断导致逻辑没有按预期执行？System方法内部是否有 `Debug.Log` 可以帮助追踪其执行路径和内部变量状态？
+        *   该条目的第一个字段（通常显示为 "RuntimeOnly"）应该指向挂载了处理该按钮点击的脚本的GameObject (例如，某个UI Panel，或者列表项预制件的根对象)。
+        *   第二个下拉菜单应该选择了正确的脚本组件，然后是该脚本中期望被调用的 `public` 方法 (例如 `MyDisplayScript.OnMyButtonClick` 或 `TechDisplayItem.HandleResearchButtonClick`)。
+        *   如果方法需要参数，确保参数已正确配置（通常对于UI按钮回调，方法设计为无参或接收简单类型参数）。
+    3.  **EventSystem是否存在**: 确保场景中有一个激活的 `EventSystem` GameObject。没有它，所有UI事件（包括按钮点击）都不会被处理。
+    4.  **UI Controller方法逻辑**: 检查被按钮调用的那个UI Controller方法内部的逻辑。它是否正确地构建并发送了Command (`this.SendCommand(new MyCommand())`)？是否有条件判断阻止了Command的发送？
+    5.  **Command执行逻辑**: 打开对应的Command脚本，检查其 `OnExecute()` 方法。它是否能正确获取到所需的System (`this.GetSystem<MySystem>()`)？System的引用是否为空？
+    6.  **System方法逻辑**: Command调用的System方法内部是否有条件判断导致逻辑没有按预期执行？System方法内部是否有 `Debug.Log` 可以帮助追踪其执行路径和内部变量状态？
 
 *   **编译错误 (代码无法运行，Console显示红色错误)**:
     1.  **仔细阅读错误信息**: Console中的编译错误通常会非常明确地指出哪个脚本文件的哪一行代码出了问题，以及错误的类型（例如 "Type or namespace name 'XXX' could not be found", "Method 'YYY' has some invalid arguments", "Member 'ZZZ' cannot be accessed with an instance reference" 等）。
@@ -1148,10 +1163,29 @@ Assets/
     *   **定位错误**: Console中的错误信息通常会包含一个调用栈 (Call Stack)，它会显示错误发生在哪一行代码，以及是哪个方法调用了导致错误的方法。双击错误信息可以直接跳转到出错的代码行。
     *   **排查方向**:
         *   **Inspector字段未链接**: 如果出错的变量是一个 `public` 或 `[SerializeField]` 的字段，并且您期望它在Unity编辑器中被赋值（例如，拖拽一个GameObject或Prefab上去），请检查该字段在Inspector中是否仍然是 "None"。**这在UI设置中非常常见！** 仔细检查所有 `XXXDisplay` 脚本和 `XXXListItemUI` 脚本上链接的UI元素是否都已正确赋值。
+        *   **`transform.Find()`失败**: 如果您在 `Awake()` 或 `Start()` 中使用 `transform.Find("ExpectedChildName")` 来获取子对象引用，请确保子对象的名称与代码中的字符串完全匹配，并且层级关系正确。如果找不到，`GetComponent<T>()` 会在 `null` 对象上调用，导致错误。
         *   **GetComponent失败**: 如果您使用 `GetComponent<T>()` 来获取一个组件的引用，但当前GameObject上并没有挂载该类型的组件，那么 `GetComponent<T>()` 会返回 `null`。后续使用这个 `null` 引用就会导致空引用错误。在使用 `GetComponent` 的结果前，最好进行空检查。
         *   **对象已被销毁**: 如果一个GameObject已经被 `Destroy()` 了，那么之前获取到的对它或其组件的引用可能会变成 `null` (或者Unity会将其伪装成 `null` 并给出特定提示)。
         *   **方法返回值为空**: 某个方法可能在特定条件下返回 `null`，而调用方没有检查这个返回值就直接使用了。例如，`GetModel<T>()` 或 `GetSystem<T>()` 如果在 `GameInitializer` 完成注册前调用，或者类型名写错，都可能返回 `null`。
         *   **Model/System未正确获取或初始化**: 在QFramework的 `IController` 或 `AbstractCommand` 中使用 `this.GetModel<T>()` 或 `this.GetSystem<T>()` 时，如果对应的Model/System没有在 `GameInitializer` 中被正确注册，或者获取时机过早（例如在 `Awake` 中，而Model/System在 `OnInit` 中注册），都可能导致获取到 `null`。确保在 `Start()` 或之后获取，或者在 `OnInit` 中获取（对于System和Model自身）。
+
+*   **游戏中看不到僵尸出现，或者僵尸出现位置/样子不对**:
+    1.  **Console错误**: 检查是否有与 `CombatSystem`, `EnemyModel`, `ZombieView`, `ObjectPoolSystem` 或 `Resources.Load` 相关的错误。
+    2.  **预制件路径与名称**: 打开 `CombatSystem.cs`，找到 `SpawnZombieWaveForDay` 方法。确认其中 `zombiePrefabName` 变量的值 (例如 `"Prefabs/Enemies/Zombie_PF"`) 与您实际的僵尸预制件在 `Assets/Resources/` 文件夹下的路径和名称**完全一致** (包括大小写，不含 `.prefab` 后缀)。
+        *   例如，如果 `zombiePrefabName` 是 `"Prefabs/Enemies/Zombie_PF"`，那么您的预制件必须存放在 `Assets/Resources/Prefabs/Enemies/Zombie_PF.prefab`。
+    3.  **`Zombie_PF` 预制件配置**:
+        *   在 `Project` 窗口找到 `Zombie_PF.prefab` 并双击进入编辑模式。
+        *   确认其根GameObject上已正确挂载了 `ZombieView.cs` 脚本。
+        *   确认预制件中负责显示的子对象（例如，您可能命名为 `VisualSprite`）上的 `SpriteRenderer` 组件已启用，并且其 `Sprite` 字段已赋值为一个可见的僵尸图片。或者，如果 `ZombieView.cs` 的 `Awake()` 或 `Setup()` 负责动态加载或设置Sprite，请确保该逻辑无误。
+        *   检查 `ZombieView` 脚本在Inspector中暴露的 `Sprite Renderer` 字段是否已正确链接到 `VisualSprite` GameObject上的 `SpriteRenderer` 组件（如果脚本中不是通过 `GetComponentInChildren` 或 `GetComponent` 自动获取的话，但我们生成的 `ZombieView.cs` 在 `Awake` 中尝试了 `GetComponent<SpriteRenderer>()`，所以如果 `SpriteRenderer` 在根对象上，应能自动获取）。
+    4.  **`_BaseLocationMarker_` 配置**:
+        *   在 `Hierarchy` 窗口中找到 `_GameManager_` GameObject。
+        *   检查其 `GameInitializer (Script)` 组件的 `Base Marker` 字段是否已链接到场景中的 `_BaseLocationMarker_` GameObject。
+        *   选中 `_BaseLocationMarker_`，检查其 `Transform` 组件的 `Position` 是否是您期望的基地中心位置。僵尸的移动目标 (`BasePosition`) 是基于此设置的。
+    5.  **对象池系统 (`ObjectPoolSystem.cs`)**:
+        *   检查Console中是否有来自对象池系统的错误，例如 "未能加载名为 'Prefabs/Enemies/Zombie_PF' 的预制件"。这通常意味着路径错误或预制件不在 `Resources` 文件夹下。
+        *   对象池系统在 `Spawn` 时如果无法生成对象，现在应该会返回 `null` 并在Console中报错，`CombatSystem` 中也有相应的错误日志。
+    6.  **`ZombieView.cs` 脚本逻辑**: 检查 `ZombieView` 的 `Awake()`, `Setup()`, `UpdatePosition()` 方法中是否有逻辑错误或空引用，特别是与 `mZombieData` 或 `spriteRenderer` 相关的部分。
 
 ## 第七部分：结语
 

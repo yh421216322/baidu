@@ -10,7 +10,15 @@ using System.Collections.Generic; // Added for Dictionary
 
 namespace YourGameNamespace.Workstations
 {
-    // IWorkstationSystem interface is now in its own file IWorkstationSystem.cs
+    // Interface definition moved here
+    public interface IWorkstationSystem : QFramework.QFISystem
+    {
+        void ApplyResearchEffectToWorkstation(WorkstationType targetStationType, TechnologyEffectType effectType, float effectValue, GameResourceType targetAffectedResource);
+        bool BuildWorkstation(WorkstationType type);
+        void AssignSurvivorToWorkstation(Guid survivorId, Guid workstationId);
+        void UnassignSurvivorFromWorkstation(Guid survivorId, Guid workstationId);
+        void UpdateAllWorkstations(float deltaTime);
+    }
 
     public class WorkstationSystem : AbstractSystem, IController, IWorkstationSystem
     {

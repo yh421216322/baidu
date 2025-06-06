@@ -22,6 +22,31 @@ namespace YourGameNamespace.UI
 
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
+        private void Awake()
+        {
+            foodText = foodText ?? transform.Find("FoodText")?.GetComponent<Text>();
+            powerText = powerText ?? transform.Find("PowerText")?.GetComponent<Text>();
+            ammoText = ammoText ?? transform.Find("AmmoText")?.GetComponent<Text>();
+            medicineText = medicineText ?? transform.Find("MedicineText")?.GetComponent<Text>();
+            researchPointsText = researchPointsText ?? transform.Find("ResearchPointsText")?.GetComponent<Text>();
+            // Assuming electronicPartsText might be a public field or intended to be found
+            // If it's not a public field, this line will try to find it.
+            // If it's added as a public field later, this line will correctly use it or fall back to Find.
+            var electronicPartsTextLocal = transform.Find("ElectronicPartsText")?.GetComponent<Text>();
+            // If electronicPartsText is a public field, it should be:
+            // electronicPartsText = electronicPartsText ?? electronicPartsTextLocal;
+
+
+            if (foodText == null) Debug.LogError("ResourceDisplay: UI元素 'FoodText' 未能成功获取或链接。");
+            if (powerText == null) Debug.LogError("ResourceDisplay: UI元素 'PowerText' 未能成功获取或链接。");
+            if (ammoText == null) Debug.LogError("ResourceDisplay: UI元素 'AmmoText' 未能成功获取或链接。");
+            if (medicineText == null) Debug.LogError("ResourceDisplay: UI元素 'MedicineText' 未能成功获取或链接。");
+            if (researchPointsText == null) Debug.LogError("ResourceDisplay: UI元素 'ResearchPointsText' 未能成功获取或链接。");
+            if (electronicPartsTextLocal == null && GameObject.Find("ElectronicPartsText")) Debug.LogWarning("ResourceDisplay: 'ElectronicPartsText' GameObject存在但未能获取Text组件，或未作为此脚本的public字段提供。");
+            // If electronicPartsText becomes a public field:
+            // if (electronicPartsText == null) Debug.LogError("ResourceDisplay: UI元素 'ElectronicPartsText' 未能成功获取或链接。");
+        }
+
         void Start() // Unity生命周期方法，在第一次Update前执行
         {
             // 确保在访问模型之前 GameArchitecture 已经初始化。
@@ -43,7 +68,7 @@ namespace YourGameNamespace.UI
             }
 
             // 注册对 ResourceChangedEvent 的监听
-            this.RegisterEvent<ResourceChangedEvent>(OnResourceChanged).UnRegisterWhenGameObjectDestroyed(this);
+            this.RegisterEvent<ResourceChangedEvent>(OnResourceChanged).UnRegisterWhenGameObjectDestroyed(this.gameObject); // 使用 this.gameObject
             RefreshAllResourceTexts(); // 初始刷新
         }
 

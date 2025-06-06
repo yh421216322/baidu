@@ -7,22 +7,37 @@ using YourGameNamespace.Framework; // 用于 GameDataModel
 using YourGameNamespace.Events;   // 用于战斗相关事件
 using YourGameNamespace.Research; // 用于 TechnologyEffectType
 using System;
+using MyGameNamespace; // For IObjectPoolSystem (assuming it's here, adjust if different)
 
 namespace YourGameNamespace.Combat
 {
-    // 定义战斗系统接口，如果尚未定义
-    public interface ICombatSystem : ISystem
+    // Interface definition updated and moved to the top of the file
+    public interface ICombatSystem : QFramework.QFISystem
     {
+        Vector2 BasePosition { get; set; }
+        float ZombieAttackRange { get; set; }
+        float SurvivorAttackRange { get; set; }
+        int BaseSurvivorAttackPower { get; set; }
+        float SurvivorAttackPowerMultiplier { get; } // Setter is private in implementation
+        GameResourceType AmmoType { get; set; }
+        int AmmoCostPerShot { get; set; }
+
+        void ApplyAttackPowerMultiplierBonus(float bonusValue);
+        void SetAttackPowerMultiplier(float newValue);
         void ApplyResearchEffectToCombat(TechnologyEffectType effectType, float value);
-        // 可能还有其他战斗系统需要暴露的方法
+        void SpawnZombieWaveForDay(int day);
+        void UpdateCombat(float deltaTime);
+        // FindClosestZombie is private, not part of the interface
     }
 
-    public class CombatSystem : AbstractSystem, ICombatSystem // 实现接口
+    public class CombatSystem : AbstractSystem, ICombatSystem // Implements the updated interface
     {
         private EnemyModel mEnemyModel;
         private SurvivorModel mSurvivorModel;
         private ResourceModel mResourceModel;
-        private GameDataModel mGameDataModel; // 新增：游戏数据模型
+        private GameDataModel mGameDataModel;
+        private IObjectPoolSystem mObjectPoolSystem; // 对象池系统
+        private Dictionary<Guid, ZombieView> mActiveZombieViews = new Dictionary<Guid, ZombieView>();
 
         public Vector2 BasePosition { get; set; } = Vector2.zero; // 基地位置
         public float ZombieAttackRange { get; set; } = 1.0f; // 僵尸攻击范围
@@ -39,8 +54,11 @@ namespace YourGameNamespace.Combat
             mEnemyModel = this.GetModel<EnemyModel>();
             mSurvivorModel = this.GetModel<SurvivorModel>();
             mResourceModel = this.GetModel<ResourceModel>();
-            mGameDataModel = this.GetModel<GameDataModel>(); // 初始化游戏数据模型
+            mGameDataModel = this.GetModel<GameDataModel>();
+            mObjectPoolSystem = this.GetSystem<IObjectPoolSystem>(); // 初始化对象池系统
             if (mGameDataModel == null) Debug.LogError("战斗系统：游戏数据模型 (GameDataModel) 为空！");
+            if (mObjectPoolSystem == null) Debug.LogError("CombatSystem: 未能获取对象池系统 (IObjectPoolSystem)！");
+            mActiveZombieViews.Clear(); //确保在系统初始化时清空
         }
 
         public void ApplyAttackPowerMultiplierBonus(float bonusValue)
@@ -94,8 +112,58 @@ namespace YourGameNamespace.Combat
                     attackPower: (int)(baseAttack * attackMultiplier),
                     movementSpeed: UnityEngine.Random.Range(0.5f, 1.5f)
                 );
-                Zombie zombie = new Zombie(stats, spawnPos, BasePosition);
-                mEnemyModel.AddZombie(zombie);
+
+                string zombiePrefabName = "Prefabs/Enemies/Zombie_PF"; // 预制件在Resources下的路径
+                GameObject zombieGO = null;
+                if (mObjectPoolSystem != null) // 确保对象池系统已获取
+                {
+                    zombieGO = mObjectPoolSystem.Spawn(zombiePrefabName);
+                }
+                else // Fallback or error if pool system is missing
+                {
+                    Debug.LogError("CombatSystem: 对象池系统未初始化，无法生成僵尸！");
+                    continue; // 如果没有对象池，则不生成此僵尸
+                }
+
+                if (zombieGO == null)
+                {
+                    Debug.LogError($"CombatSystem: 未能从对象池生成预制件 {zombiePrefabName}！请检查路径和对象池设置。");
+                    continue;
+                }
+
+                // 设置GameObject的初始位置和激活状态
+                zombieGO.transform.position = spawnPos;
+                zombieGO.SetActive(true); // 对象池可能在回收时禁用了它
+
+                ZombieView zombieView = zombieGO.GetComponent<ZombieView>();
+                if (zombieView == null)
+                {
+                    Debug.LogError($"CombatSystem: 生成的僵尸预制件 {zombiePrefabName} (实例名: {zombieGO.name}) 上没有找到 ZombieView 脚本！");
+                    if (mObjectPoolSystem != null) mObjectPoolSystem.Unspawn(zombieGO); // 回收错误的实例
+                    else GameObject.Destroy(zombieGO);
+                    continue;
+                }
+
+                if (mObjectPoolSystem != null)
+                {
+                    zombieView.InitPool(mObjectPoolSystem); // 注入对象池引用
+                }
+
+                Zombie zombieData = new Zombie(stats, spawnPos, BasePosition); // 创建逻辑数据对象
+                zombieView.Setup(zombieData); // 关联数据到View
+
+                if (!mActiveZombieViews.ContainsKey(zombieData.Id))
+                {
+                    mActiveZombieViews.Add(zombieData.Id, zombieView);
+                }
+                else
+                {
+                    Debug.LogWarning($"CombatSystem: Zombie Id {zombieData.Id} 已存在于 mActiveZombieViews 字典中。旧的View将被覆盖。");
+                    mActiveZombieViews[zombieData.Id] = zombieView;
+                }
+
+                mEnemyModel.AddZombie(zombieData); // EnemyModel仍管理逻辑数据对象
+                Debug.Log($"已生成僵尸 {zombieData.Id} 于 {spawnPos} (第 {day} 天)");
             }
             Debug.Log($"生成后僵尸总数：{mEnemyModel.GetAllZombies().Count}");
         }
@@ -114,11 +182,31 @@ namespace YourGameNamespace.Combat
             // 僵尸行动
             foreach (var zombie in mEnemyModel.GetAllZombies())
             {
-                if (zombie.IsDead.Value) // 使用 .Value
+                if (zombie.IsDead.Value)
                 {
-                    // 确保死亡的僵尸只添加一次到移除列表
                     if (!zombiesToRemove.Contains(zombie))
                     {
+                        // Instead of adding to a list for later model removal,
+                        // get the ZombieView and tell it to start its death sequence.
+                        // The ZombieView will then be responsible for calling Unspawn on itself.
+                        // We need a way to map Zombie data to ZombieView instance.
+                        // This might require CombatSystem to keep a dictionary or EnemyModel to hold the GO reference.
+                        // For now, let's assume we can find the GameObject/ZombieView.
+                        // Get the ZombieView from the dictionary and command it to recycle
+                        if (mActiveZombieViews.TryGetValue(zombie.Id, out ZombieView viewToRecycle))
+                        {
+                            viewToRecycle.TriggerDeathSequenceAndRecycle(); // Command View to start death sequence and self-recycle
+                            mActiveZombieViews.Remove(zombie.Id);          // Remove from active views dictionary
+                        }
+                        else
+                        {
+                            // Log if a dead zombie's view was not found in the active views,
+                            // which might indicate an issue if it wasn't properly removed before or added.
+                            Debug.LogWarning($"CombatSystem: ZombieView for dead zombie {zombie.Id} not found in mActiveZombieViews for recycling.");
+                        }
+
+                        // Add to list for model removal AFTER iterating or it modifies collection
+                        // This ensures the logical data is removed from EnemyModel
                         zombiesToRemove.Add(zombie);
                     }
                     continue;
@@ -126,10 +214,16 @@ namespace YourGameNamespace.Combat
                 zombie.Move(deltaTime);
                 if (Vector2.Distance(zombie.Position, BasePosition) < ZombieAttackRange)
                 {
-                    zombie.AttackTarget(); // 僵尸记录其攻击意图
-                    mGameDataModel.ApplyDamageToBase(zombie.Stats.AttackPower); // 使用 ApplyDamageToBase
-                    Debug.LogWarning($"基地受到僵尸 {zombie.Id} 的 {zombie.Stats.AttackPower} 点伤害。基地生命值：{mGameDataModel.BaseHealth.Value}"); // 使用 .Value
-                    if (mGameDataModel.BaseHealth.Value <= 0) // 使用 .Value
+                    zombie.AttackTarget();
+                    mGameDataModel.ApplyDamageToBase(zombie.Stats.AttackPower);
+
+                    if (mActiveZombieViews.TryGetValue(zombie.Id, out ZombieView attackingZombieView))
+                    {
+                        attackingZombieView.PlayAttackAnimation();
+                    }
+
+                    Debug.LogWarning($"基地受到僵尸 {zombie.Id} 的 {zombie.Stats.AttackPower} 点伤害。基地生命值：{mGameDataModel.BaseHealth.Value}");
+                    if (mGameDataModel.BaseHealth.Value <= 0)
                     {
                         // mGameDataModel.BaseHealth.Value = 0; // ApplyDamageToBase 内部会处理 Clamp
                         Debug.LogError("游戏结束！基地生命值耗尽。");

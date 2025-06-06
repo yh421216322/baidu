@@ -8,13 +8,18 @@ using System.Linq; // Added for potential Linq operations, though not strictly n
 
 namespace YourGameNamespace.UI
 {
+using MyGameNamespace; // For IObjectPoolSystem, assuming it's in MyGameNamespace based on ObjectPoolSystem.cs
+
+namespace YourGameNamespace.UI
+{
     public class SurvivorDisplay : MonoBehaviour, IController
     {
-        // public Text survivorListText; // Removed
-        public GameObject survivorItemPrefab;    // Prefab for individual survivor item UI
-        public Transform survivorListContainer; // Container to hold survivor item instances
+        // public GameObject survivorItemPrefab; // Removed
+        private readonly string survivorItemPrefabName = "Prefabs/UI/Items/SurvivorItem_PF";
+        public Transform survivorListContainer;
 
         private SurvivorModel mSurvivorModel;
+        private IObjectPoolSystem mObjectPoolSystem;
 
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
@@ -36,10 +41,16 @@ namespace YourGameNamespace.UI
             }
 
             if (survivorListContainer == null) Debug.LogError("SurvivorDisplay: survivorListContainer 未在检视面板中分配！");
-            if (survivorItemPrefab == null) Debug.LogError("SurvivorDisplay: survivorItemPrefab 未在检视面板中分配！");
+            // if (survivorItemPrefab == null) Debug.LogError("SurvivorDisplay: survivorItemPrefab 未在检视面板中分配！"); // Removed check for public field
+
+            mObjectPoolSystem = this.GetSystem<IObjectPoolSystem>();
+            if (mObjectPoolSystem == null)
+            {
+                Debug.LogError("SurvivorDisplay: 未能获取到 IObjectPoolSystem！列表项将无法通过对象池创建。");
+            }
 
             // Register for events
-            this.RegisterEvent<Model_SurvivorAddedEvent>(e => RefreshSurvivorList()).UnRegisterWhenGameObjectDestroyed(this);
+            this.RegisterEvent<Model_SurvivorAddedEvent>(e => RefreshSurvivorList()).UnRegisterWhenGameObjectDestroyed(this.gameObject);
             // Potentially listen to Model_SurvivorRemovedEvent, Model_SurvivorDataUpdatedEvent in the future
 
             RefreshSurvivorList(); // Initial refresh
@@ -47,41 +58,60 @@ namespace YourGameNamespace.UI
 
         void RefreshSurvivorList()
         {
-            if (mSurvivorModel == null || survivorListContainer == null || survivorItemPrefab == null)
+            if (mSurvivorModel == null || survivorListContainer == null ) // Removed survivorItemPrefab from check
             {
-                Debug.LogError("SurvivorDisplay:无法刷新幸存者列表，缺少依赖项（Model, Container, or Prefab）。");
+                Debug.LogError("SurvivorDisplay:无法刷新幸存者列表，缺少依赖项（Model or Container）。");
                 return;
             }
 
             // Clear old items
             foreach (Transform child in survivorListContainer)
             {
-                // If using an object pool, Unspawn here. For now, Destroy.
-                Destroy(child.gameObject);
+                if (mObjectPoolSystem != null)
+                {
+                    mObjectPoolSystem.Unspawn(child.gameObject);
+                }
+                else
+                {
+                    Destroy(child.gameObject); // Fallback if pool is missing
+                }
             }
 
             List<Survivor> survivors = mSurvivorModel.GetAllSurvivors();
 
             if (survivors.Count == 0)
             {
-                // Optionally, display a "No survivors" message, perhaps by enabling/disabling a dedicated Text object.
-                // For now, an empty container means no survivors.
                 Debug.Log("SurvivorDisplay: 目前还没有幸存者。");
                 return;
             }
 
             foreach (Survivor survivor in survivors)
             {
-                GameObject itemGO = Instantiate(survivorItemPrefab, survivorListContainer);
-                SurvivorListItemUI itemUI = itemGO.GetComponent<SurvivorListItemUI>();
-                if (itemUI != null)
+                if (mObjectPoolSystem == null)
                 {
-                    itemUI.Setup(survivor); // SurvivorListItemUI will handle its own BindableProperty subscriptions
+                    Debug.LogError("SurvivorDisplay: IObjectPoolSystem is null. Cannot spawn items.");
+                    break;
+                }
+
+                GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefabName);
+                if (itemGO != null)
+                {
+                    itemGO.transform.SetParent(survivorListContainer, false);
+                    itemGO.SetActive(true);
+                    SurvivorListItemUI itemUI = itemGO.GetComponent<SurvivorListItemUI>();
+                    if (itemUI != null)
+                    {
+                        itemUI.Setup(survivor);
+                    }
+                    else
+                    {
+                        Debug.LogError($"SurvivorDisplay: 预制件 {survivorItemPrefabName} 上缺少 SurvivorListItemUI 脚本。");
+                        mObjectPoolSystem.Unspawn(itemGO); // Recycle invalid item
+                    }
                 }
                 else
                 {
-                    Debug.LogError($"SurvivorDisplay: survivorItemPrefab '{survivorItemPrefab.name}' 上缺少 SurvivorListItemUI 脚本组件。");
-                    Destroy(itemGO); // Clean up instantiated item if script is missing
+                    Debug.LogError($"SurvivorDisplay: 从对象池生成 {survivorItemPrefabName} 失败。请检查Resources路径和预制件。");
                 }
             }
         }

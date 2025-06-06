@@ -4,9 +4,18 @@ using System.Collections.Generic; // 用于 List
 using System; // 用于 Guid
 using YourGameNamespace.Survivors; // 用于 SurvivorModel, SurvivorStatus, ISurvivorManagerSystem
 using YourGameNamespace.Events;   // 用于 POIExploredEvent, Exploration_ExpeditionOutcomeResolvedEvent
+// Removed: using YourGameNamespace.Exploration; // No longer needed if interface is in the same file
 
 namespace YourGameNamespace.Exploration
 {
+    // Interface definition moved here and updated
+    public interface IExplorationSystem : QFramework.QFISystem
+    {
+        bool CanStartExpeditionToPOI(string poiId, List<Guid> survivorIds, out string reason);
+        bool StartExpedition(string poiId, List<Guid> survivorIds);
+        void UpdateActiveExpeditions(float deltaTime);
+    }
+
     // 探索系统，管理远征和兴趣点(POI)的逻辑
     public class ExplorationSystem : AbstractSystem, IExplorationSystem, IController // 实现IController以便获取System
     {

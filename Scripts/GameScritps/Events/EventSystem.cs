@@ -5,7 +5,12 @@ using UnityEngine;
 
 namespace YourGameNamespace.Events
 {
-    public class GEventSystem : AbstractSystem, IController // 实现IController以便GetArchitecture()
+    public interface IGEventSystem : QFramework.QFISystem
+    {
+        void TryTriggerRandomEvent();
+    }
+
+    public class GEventSystem : AbstractSystem, IGEventSystem, IController // Implements IGEventSystem
     {
         // 存储用于创建不同随机事件实例的工厂方法列表
         private List<System.Func<RandomEvent>> mEventFactories = new List<System.Func<RandomEvent>>();

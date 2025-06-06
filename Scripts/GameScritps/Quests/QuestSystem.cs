@@ -9,8 +9,14 @@ using YourGameNamespace.Events;      // 用于 GameEvents (游戏事件定义)
 
 namespace YourGameNamespace.Quests
 {
+    public interface IQuestSystem : QFramework.QFISystem
+    {
+        void OnGameEvent(ObjectiveType type, string targetId, int amount = 1);
+        void CheckForAllQuestActivations();
+    }
+
     // 任务系统，负责管理任务的整个生命周期：激活、进度更新、完成及奖励发放
-    public class QuestSystem : AbstractSystem
+    public class QuestSystem : AbstractSystem, IQuestSystem // Implements IQuestSystem
     {
         // 各种所需模型的引用
         private QuestModel mQuestModel;           // 任务数据模型

@@ -22,6 +22,17 @@ namespace YourGameNamespace.UI
         // IController 接口要求实现此方法，返回当前游戏架构的实例
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
+        private void Awake()
+        {
+            activeQuestsText = activeQuestsText ?? transform.Find("ActiveQuestsText")?.GetComponent<Text>();
+            completedQuestsText = completedQuestsText ?? transform.Find("CompletedQuestsText")?.GetComponent<Text>();
+            questNotificationText = questNotificationText ?? transform.Find("QuestNotificationText")?.GetComponent<Text>();
+
+            if (activeQuestsText == null) Debug.LogError("QuestLogDisplay: UI元素 'ActiveQuestsText' 未能成功获取或链接。");
+            if (completedQuestsText == null) Debug.LogWarning("QuestLogDisplay: UI元素 'CompletedQuestsText' 未链接 (可选)。"); // Optional field
+            if (questNotificationText == null) Debug.LogError("QuestLogDisplay: UI元素 'QuestNotificationText' 未能成功获取或链接。");
+        }
+
         void Start() // Unity生命周期方法，在第一次Update前执行
         {
             // 检查 GameArchitecture 是否已初始化
@@ -36,12 +47,12 @@ namespace YourGameNamespace.UI
             if (mQuestModel != null)
             {
                 // 注册对任务相关事件的监听 (用于通知)
-                this.RegisterEvent<QuestActivatedEvent>(OnQuestActivated).UnRegisterWhenGameObjectDestroyed(this);
-                this.RegisterEvent<QuestSucceededEvent>(OnQuestSucceeded).UnRegisterWhenGameObjectDestroyed(this);
-                this.RegisterEvent<QuestObjectiveCompletedEvent>(OnQuestObjectiveCompleted).UnRegisterWhenGameObjectDestroyed(this);
+                this.RegisterEvent<QuestActivatedEvent>(OnQuestActivated).UnRegisterWhenGameObjectDestroyed(this.gameObject);
+                this.RegisterEvent<QuestSucceededEvent>(OnQuestSucceeded).UnRegisterWhenGameObjectDestroyed(this.gameObject);
+                this.RegisterEvent<QuestObjectiveCompletedEvent>(OnQuestObjectiveCompleted).UnRegisterWhenGameObjectDestroyed(this.gameObject);
 
                 // 当任何任务状态更新时，刷新整个列表
-                this.RegisterEvent<Model_QuestStatusUpdatedEvent>(e => RefreshQuestList()).UnRegisterWhenGameObjectDestroyed(this);
+                this.RegisterEvent<Model_QuestStatusUpdatedEvent>(e => RefreshQuestList()).UnRegisterWhenGameObjectDestroyed(this.gameObject);
 
                 RefreshQuestList(); // 初始刷新
             }

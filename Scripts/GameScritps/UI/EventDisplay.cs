@@ -15,6 +15,12 @@ namespace YourGameNamespace.UI
 
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
+        private void Awake()
+        {
+            eventText = eventText ?? transform.Find("EventText")?.GetComponent<Text>();
+            if (eventText == null) Debug.LogError("EventDisplay: UI元素 'EventText' 未能成功获取或链接。请检查Hierarchy中的命名和组件。");
+        }
+
         void Start() // Unity生命周期方法，在第一次Update前执行
         {
             // 检查 GameArchitecture 是否已初始化
@@ -36,7 +42,7 @@ namespace YourGameNamespace.UI
 
             if (mEventModel != null)
             {
-                mEventModel.CurrentEvent.RegisterWithInit(OnCurrentEventChanged).UnRegisterWhenGameObjectDestroyed(this);
+                mEventModel.CurrentEvent.RegisterWithInit(OnCurrentEventChanged).UnRegisterWhenGameObjectDestroyed(this.gameObject); // 使用 this.gameObject
             }
             else
             {

@@ -53,10 +53,29 @@ namespace MyGameNamespace
 
 
             if (!m_pools.ContainsKey(addName))
-                RegisterNew(addName);
-            SubPool pool = m_pools[addName];
-            return pool.Spawn();
+            {
+                RegisterNew(addName); // Attempt to register if not found
+            }
 
+            // After attempting to register, check again if the pool exists
+            if (m_pools.TryGetValue(addName, out SubPool pool) && pool != null)
+            {
+                GameObject spawnedObject = pool.Spawn();
+                if (spawnedObject == null)
+                {
+                    // This case might happen if SubPool.Spawn() can return null
+                    // (e.g., if the prefab in the pool was actually null but the pool was still created,
+                    // or if the pool has an internal limit or condition not met)
+                    Debug.LogError($"对象池：子对象池 '{addName}' 存在但未能生成对象实例。预制件可能无效。");
+                    return null;
+                }
+                return spawnedObject;
+            }
+            else
+            {
+                Debug.LogError($"对象池：名为 '{addName}' (来源于路径: {name}) 的对象池不存在或无效，无法生成对象。");
+                return null; // Return null if pool doesn't exist or is invalid after registration attempt
+            }
         }
 
         public void Unspawn(GameObject go) // 更正拼写 Unspwan -> Unspawn
@@ -108,12 +127,23 @@ namespace MyGameNamespace
 //        Debug.Log(path);
             if (prefab == null)
             {
-                //  Debug.Log("没有找到预制体,名称为"+ path);
+                Debug.LogError($"对象池：未能加载名为 '{path}' 的预制件。请确保它在Resources文件夹下并且路径正确。");
+                return; // Do not create a pool if prefab is null
             }
 
             //创建子对象池
             SubPool pool = new SubPool(prefab);
-            m_pools.Add(pool.Name, pool);
+            // Ensure pool.Name is derived correctly if prefab is valid,
+            // or that Add uses 'name' if pool.Name might be null due to prefab issues.
+            // Assuming SubPool constructor handles prefab.name correctly.
+            if (!string.IsNullOrEmpty(pool.Name)) // Or use 'name' as key if pool.Name can be problematic
+            {
+                 m_pools.Add(pool.Name, pool);
+            }
+            else
+            {
+                Debug.LogError($"对象池：预制件 {path} 加载成功但其名称为空或无效，无法创建对象池。");
+            }
         }
 
 

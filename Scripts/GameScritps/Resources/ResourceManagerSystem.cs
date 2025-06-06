@@ -1,11 +1,17 @@
 using QFramework;
 
-namespace YourGameNamespace
+namespace YourGameNamespace.Resources // Changed namespace to YourGameNamespace.Resources for consistency
 {
+    public interface IResourceManagerSystem : QFramework.QFISystem
+    {
+        // No specific public methods identified in ResourceManagerSystem yet for an interface.
+        // This interface serves as a placeholder and for QFramework system registration.
+    }
+
     // 资源管理器系统
     // 注意：当前这个系统的实现非常基础，大部分资源管理的实际逻辑位于 ResourceModel 中。
     // 这个系统目前主要作为一个占位符或者未来扩展功能（例如，处理复杂的资源转换规则、全局资源事件等）的框架。
-    public class ResourceManagerSystem : AbstractSystem
+    public class ResourceManagerSystem : AbstractSystem, IResourceManagerSystem // Implements IResourceManagerSystem
     {
         // 系统初始化时调用
         protected override void OnInit()

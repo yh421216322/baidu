@@ -20,6 +20,19 @@ namespace YourGameNamespace.UI
 
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
+        private void Awake()
+        {
+            // 使用空值合并操作符：如果Inspector中已赋值，则使用；否则，通过Find查找。
+            dayText = dayText ?? transform.Find("DayText")?.GetComponent<Text>();
+            timeText = timeText ?? transform.Find("TimeText")?.GetComponent<Text>();
+            baseHealthText = baseHealthText ?? transform.Find("BaseHealthText")?.GetComponent<Text>();
+
+            // 添加必要的null检查和错误日志
+            if (dayText == null) Debug.LogError("DayDisplay: UI元素 'DayText' 未能成功获取或链接。请检查Hierarchy中的命名和组件。");
+            if (timeText == null) Debug.LogError("DayDisplay: UI元素 'TimeText' 未能成功获取或链接。");
+            if (baseHealthText == null) Debug.LogError("DayDisplay: UI元素 'BaseHealthText' 未能成功获取或链接。");
+        }
+
         void Start() // Unity生命周期方法，在第一次Update前执行
         {
             // 检查 GameArchitecture 是否已初始化
@@ -43,12 +56,12 @@ namespace YourGameNamespace.UI
                 mGameDataModel.CurrentDay.RegisterWithInit(day => {
                     UpdateDayText(day);
                     CheckGameEndConditions();
-                }).UnRegisterWhenGameObjectDestroyed(this);
+                }).UnRegisterWhenGameObjectDestroyed(this.gameObject); // 使用 this.gameObject
 
                 mGameDataModel.BaseHealth.RegisterWithInit(health => {
                     UpdateBaseHealthText(health);
                     CheckGameEndConditions();
-                }).UnRegisterWhenGameObjectDestroyed(this);
+                }).UnRegisterWhenGameObjectDestroyed(this.gameObject); // 使用 this.gameObject
             }
         }
 

@@ -6,8 +6,21 @@ using YourGameNamespace.Workstations; // 用于 WorkstationType (在新方法中
 
 namespace YourGameNamespace.Survivors
 {
+    // Interface definition moved here
+    public interface ISurvivorManagerSystem : QFramework.QFISystem // Inherits from QFISystem
+    {
+        Survivor CreateNewSurvivor(string name, SurvivorAttributes attributes, SurvivorProfession profession);
+        void UpdateSurvivorNeeds(float deltaTime);
+        bool SurvivorTryEat(Guid survivorId, int foodToEat);
+        void SurvivorSetResting(Guid survivorId, bool isResting);
+        void AssignSurvivorToWork(Guid survivorId, Guid workstationId, WorkstationType workstationType);
+        void ClearSurvivorWorkAssignment(Guid survivorId);
+        void SetSurvivorOnExpeditionStatus(Guid survivorId, bool isOnExpedition);
+        void UpdateSurvivorStatus(Guid survivorId, SurvivorStatus newStatus);
+    }
+
     // 幸存者管理器系统，负责处理幸存者的创建、需求更新以及与需求相关的行为（如进食、休息）
-    public class SurvivorManagerSystem : AbstractSystem, ISurvivorManagerSystem
+    public class SurvivorManagerSystem : AbstractSystem, ISurvivorManagerSystem // Implements the updated interface
     {
         private ResourceModel mResourceModel; // 资源数据模型
         private SurvivorModel mSurvivorModel;   // 幸存者数据模型

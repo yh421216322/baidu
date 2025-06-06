@@ -6,12 +6,21 @@ using YourGameNamespace.Events;   // 用于 EventSystem (事件系统) 及 DayCh
 
 namespace YourGameNamespace.Time
 {
+    public interface IDayNightSystem : QFramework.QFISystem
+    {
+        float SecondsPerDay { get; set; }
+        float TimeOfDayNormalized { get; }
+        void UpdateDayCycle(float deltaTime);
+    }
+
     // 昼夜系统，负责管理游戏内时间的流逝、天数更迭以及每日触发的事件
-    public class DayNightSystem : AbstractSystem
+    public class DayNightSystem : AbstractSystem, IDayNightSystem // Implements IDayNightSystem
     {
         private GameDataModel mGameDataModel;     // 核心游戏数据模型
-        private CombatSystem mCombatSystem;       // 战斗系统，用于触发每日僵尸潮
-        private GEventSystem mEventSystem;        // 事件系统 (GEventSystem 是具体类名)，用于触发每日随机事件
+        // Note: mCombatSystem and mEventSystem should ideally be interfaces too (ICombatSystem, IGEventSystem)
+        private ICombatSystem mCombatSystem;       // 战斗系统，用于触发每日僵尸潮
+        private IGEventSystem mEventSystem;        // 事件系统 (GEventSystem 是具体类名，假设有IGEventSystem接口)
+
         private float mCurrentTimeInDay = 0f;     // 当前这一天已经过去的时间（秒）
 
         // 每天的总秒数，可配置，默认为60秒
@@ -23,13 +32,13 @@ namespace YourGameNamespace.Time
         protected override void OnInit()
         {
             mGameDataModel = this.GetModel<GameDataModel>();
-            mCombatSystem = this.GetSystem<CombatSystem>();
-            mEventSystem = this.GetSystem<GEventSystem>(); // 初始化事件系统引用
+            mCombatSystem = this.GetSystem<ICombatSystem>(); // Use interface
+            mEventSystem = this.GetSystem<IGEventSystem>(); // Use interface, assuming IGEventSystem exists
 
             // 检查依赖项是否成功获取
             if (mGameDataModel == null) Debug.LogError("昼夜系统：核心游戏数据模型 (GameDataModel) 未找到！");
-            if (mCombatSystem == null) Debug.LogError("昼夜系统：战斗系统 (CombatSystem) 未找到！");
-            if (mEventSystem == null) Debug.LogError("昼夜系统：事件系统 (GEventSystem) 未找到！");
+            if (mCombatSystem == null) Debug.LogError("昼夜系统：战斗系统 (ICombatSystem) 未找到！");
+            if (mEventSystem == null) Debug.LogError("昼夜系统：事件系统 (IGEventSystem) 未找到！");
 
             mCurrentTimeInDay = 0f; // 重置当天时间计数器
             // 注意：由于 GameDataModel.CurrentDay 现在是 BindableProperty，需要通过 .Value 访问其值
@@ -74,7 +83,7 @@ namespace YourGameNamespace.Time
             }
             else
             {
-                Debug.LogError("昼夜系统：在 TriggerNewDayEvents 方法中，战斗系统 (CombatSystem) 未找到。无法生成僵尸。");
+                Debug.LogError("昼夜系统：在 TriggerNewDayEvents 方法中，战斗系统 (ICombatSystem) 未找到。无法生成僵尸。");
             }
 
             if (mEventSystem != null)
@@ -83,7 +92,7 @@ namespace YourGameNamespace.Time
             }
             else
             {
-                Debug.LogError("昼夜系统：在 TriggerNewDayEvents 方法中，事件系统 (GEventSystem) 未找到。无法触发随机事件。");
+                Debug.LogError("昼夜系统：在 TriggerNewDayEvents 方法中，事件系统 (IGEventSystem) 未找到。无法触发随机事件。");
             }
         }
     }

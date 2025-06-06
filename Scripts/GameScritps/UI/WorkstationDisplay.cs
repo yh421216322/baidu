@@ -7,16 +7,19 @@ using QFramework;
 using YourGameNamespace.Workstations;
 using YourGameNamespace.Events; // For Model_WorkstationRegisteredEvent
 using System.Linq; // For potential Linq operations
+using MyGameNamespace; // For IObjectPoolSystem, assuming it's in MyGameNamespace
 
 namespace YourGameNamespace.UI
 {
     public class WorkstationDisplay : MonoBehaviour, IController
     {
-        public GameObject workstationItemPrefab;    // Prefab for individual workstation item UI
-        public Transform workstationListContainer; // Container to hold workstation item instances
+        // public GameObject workstationItemPrefab; // Removed
+        private readonly string workstationItemPrefabName = "Prefabs/UI/Items/WorkstationItem_PF";
+        public Transform workstationListContainer;
 
-        private WorkstationModel mWorkstationModel; // Use IWorkstationModel if interface exists and is registered
-        // private SurvivorModel mSurvivorModel; // Removed, child items will handle survivor details if needed
+        private WorkstationModel mWorkstationModel;
+        private IObjectPoolSystem mObjectPoolSystem;
+        // private SurvivorModel mSurvivorModel; // Already removed
 
         public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
@@ -39,10 +42,16 @@ namespace YourGameNamespace.UI
             }
 
             if (workstationListContainer == null) Debug.LogError("WorkstationDisplay: workstationListContainer 未在检视面板中分配！");
-            if (workstationItemPrefab == null) Debug.LogError("WorkstationDisplay: workstationItemPrefab 未在检视面板中分配！");
+            // if (workstationItemPrefab == null) Debug.LogError("WorkstationDisplay: workstationItemPrefab 未在检视面板中分配！"); // Removed
+
+            mObjectPoolSystem = this.GetSystem<IObjectPoolSystem>();
+            if (mObjectPoolSystem == null)
+            {
+                Debug.LogError("WorkstationDisplay: 未能获取到 IObjectPoolSystem！列表项将无法通过对象池创建。");
+            }
 
             // Register for events
-            this.RegisterEvent<Model_WorkstationRegisteredEvent>(e => RefreshWorkstationList()).UnRegisterWhenGameObjectDestroyed(this);
+            this.RegisterEvent<Model_WorkstationRegisteredEvent>(e => RefreshWorkstationList()).UnRegisterWhenGameObjectDestroyed(this.gameObject);
             // TODO: Listen for Model_WorkstationRemovedEvent if workstations can be removed
 
             RefreshWorkstationList(); // Initial refresh
@@ -50,17 +59,23 @@ namespace YourGameNamespace.UI
 
         void RefreshWorkstationList()
         {
-            if (mWorkstationModel == null || workstationListContainer == null || workstationItemPrefab == null)
+            if (mWorkstationModel == null || workstationListContainer == null) // Removed workstationItemPrefab from check
             {
-                Debug.LogError("WorkstationDisplay: 无法刷新工作站列表，缺少依赖项（Model, Container, or Prefab）。");
+                Debug.LogError("WorkstationDisplay: 无法刷新工作站列表，缺少依赖项（Model or Container）。");
                 return;
             }
 
             // Clear old items
             foreach (Transform child in workstationListContainer)
             {
-                // If using an object pool, Unspawn here. For now, Destroy.
-                Destroy(child.gameObject);
+                if (mObjectPoolSystem != null)
+                {
+                    mObjectPoolSystem.Unspawn(child.gameObject);
+                }
+                else
+                {
+                    Destroy(child.gameObject); // Fallback if pool is missing
+                }
             }
 
             List<Workstation> workstations = mWorkstationModel.GetAllWorkstations();
@@ -73,16 +88,31 @@ namespace YourGameNamespace.UI
 
             foreach (Workstation station in workstations)
             {
-                GameObject itemGO = Instantiate(workstationItemPrefab, workstationListContainer);
-                WorkstationListItemUI itemUI = itemGO.GetComponent<WorkstationListItemUI>();
-                if (itemUI != null)
+                if (mObjectPoolSystem == null)
                 {
-                    itemUI.Setup(station, this); // WorkstationListItemUI will handle its own BindableProperty subscriptions
+                    Debug.LogError("WorkstationDisplay: IObjectPoolSystem is null. Cannot spawn items.");
+                    break;
+                }
+
+                GameObject itemGO = mObjectPoolSystem.Spawn(workstationItemPrefabName);
+                if (itemGO != null)
+                {
+                    itemGO.transform.SetParent(workstationListContainer, false);
+                    itemGO.SetActive(true);
+                    WorkstationListItemUI itemUI = itemGO.GetComponent<WorkstationListItemUI>();
+                    if (itemUI != null)
+                    {
+                        itemUI.Setup(station, this);
+                    }
+                    else
+                    {
+                        Debug.LogError($"WorkstationDisplay: 预制件 {workstationItemPrefabName} 上缺少 WorkstationListItemUI 脚本。");
+                        mObjectPoolSystem.Unspawn(itemGO); // Recycle invalid item
+                    }
                 }
                 else
                 {
-                    Debug.LogError($"WorkstationDisplay: workstationItemPrefab '{workstationItemPrefab.name}' 上缺少 WorkstationListItemUI 脚本组件。");
-                    Destroy(itemGO); // Clean up instantiated item if script is missing
+                    Debug.LogError($"WorkstationDisplay: 从对象池生成 {workstationItemPrefabName} 失败。请检查Resources路径和预制件。");
                 }
             }
         }
