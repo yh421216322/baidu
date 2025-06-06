@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>游戏核心代码流转可视化</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; }
+        .flow-container { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .flow-title { font-size: 1.5em; color: #333; margin-bottom: 10px; }
+        ul { list-style-type: none; padding-left: 0; }
+        li { margin-bottom: 8px; padding: 8px; border-radius: 3px; }
+        .ui-controller { background-color: #e6f2ff; border-left: 5px solid #007bff; } /* 蓝色系 for UI/Controller */
+        .command { background-color: #fff0e6; border-left: 5px solid #ff8c00; }      /* 橙色系 for Command */
+        .system { background-color: #e6ffe6; border-left: 5px solid #28a745; }       /* 绿色系 for System */
+        .model { background-color: #f9e6ff; border-left: 5px solid #9933cc; }        /* 紫色系 for Model */
+        .entity { background-color: #ffffcc; border-left: 5px solid #ffeb3b; }       /* 黄色系 for Entities (like Survivor, Tech) */
+        .event { background-color: #ffe6e6; border-left: 5px solid #dc3545; }         /* 红色系 for Events */
+        .method-call { color: #555; font-style: italic; margin-left: 15px; }
+        .sends-event { color: #dc3545; font-weight: bold; margin-left: 15px; }
+        .bindable-update { color: #9933cc; font-weight: bold; margin-left: 15px; }
+        .reads-writes { color: #20c997; margin-left: 15px; }
+        .arrow { margin: 0 5px; }
+        .sub-flow { margin-left: 20px; border-left: 2px dashed #ccc; padding-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>游戏核心代码流转可视化</h1>
+
+    <div class="flow-container">
+        <h2 class="flow-title">流程一：玩家开始科技研究</h2>
+        <ul>
+            <li class="ui-controller">
+                <strong>TechDisplayItem.cs (UI项)</strong>
+                <ul>
+                    <li class="method-call">用户点击 "研究" 按钮，触发 `HandleResearchButtonClick()`</li>
+                    <li class="method-call">内部调用传递进来的 `researchRequestCallback(mTechId)`</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (回调)</li>
+            <li class="ui-controller">
+                <strong>ResearchDisplay.cs (UI Controller)</strong>
+                <ul>
+                    <li class="method-call">执行 `HandleResearchRequest(string techId)`</li>
+                    <li class="method-call">构建 `new StartResearchCommand(techId)`</li>
+                    <li class="sends-event">通过 `this.SendCommand(...)` 发送Command</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (Command Bus)</li>
+            <li class="command">
+                <strong>StartResearchCommand.cs</strong>
+                <ul>
+                    <li class="method-call">`OnExecute()` 方法被调用</li>
+                    <li class="method-call">`this.GetSystem&lt;IResearchSystem&gt;()` 获取研究系统</li>
+                    <li class="method-call">调用 `researchSystem.StartResearch(techId)`</li>
+                    <li class="reads-writes"><em>(StartResearch 内部会与ResourceModel交互消耗点数，并与ResearchModel交互更新科技状态)</em></li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (方法调用)</li>
+            <li class="system">
+                <strong>ResearchSystem.cs</strong>
+                <ul>
+                    <li class="method-call">执行 `StartResearch(string techId)`</li>
+                    <li class="reads-writes">调用 `mResourceModel.ConsumeResource(...)`</li>
+                    <li class="method-call">调用 `mResearchModel.UpdateTechnologyStatus(techId, ResearchStatus.InProgress)`</li>
+                    <li class="bindable-update">更新自身的 `CurrentlyResearching.Value` (BindableProperty)</li>
+                    <li class="bindable-update">更新自身的 `CurrentResearchProgressNormalized.Value` (BindableProperty)</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (方法调用)</li>
+            <li class="model">
+                <strong>ResearchModel.cs</strong>
+                <ul>
+                    <li class="method-call">执行 `UpdateTechnologyStatus(...)`</li>
+                    <li class="reads-writes">修改对应 `Technology` 实例的 `Status.Value` (BindableProperty)</li>
+                    <li class="sends-event">发送 `Model_TechnologyStatusUpdatedEvent` (QFramework Event)</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (事件/绑定通知)</li>
+            <li class="system">
+                <strong>ResearchSystem.cs (再次响应)</strong>
+                <ul>
+                    <li class="method-call">之前注册的 `OnModelTechnologyStatusUpdated` (处理 `Model_TechnologyStatusUpdatedEvent`) 被触发</li>
+                    <li class="sends-event">可能触发其自身的C#事件 `OnTechnologyStatusChanged` (如果UI或其他模块监听这个)</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (绑定通知)</li>
+            <li class="ui-controller">
+                <strong>ResearchDisplay.cs (再次响应)</strong>
+                <ul>
+                    <li class="method-call">之前注册的 `UpdateCurrentResearchInfo` (绑定到 `ResearchSystem.CurrentlyResearching`) 被触发</li>
+                    <li class="method-call">之前注册的 `UpdateResearchProgressUI` (绑定到 `ResearchSystem.CurrentResearchProgressNormalized`) 被触发</li>
+                    <li class="method-call">之前注册的回调 (监听 `Model_TechnologyStatusUpdatedEvent`) 触发 `RefreshTechnologyList`</li>
+                    <li class="method-call">UI根据新数据更新显示 (当前研究项目名称、进度条、科技列表状态)</li>
+                </ul>
+            </li>
+             <li class="arrow">⬇️ (绑定通知)</li>
+            <li class="ui-controller">
+                <strong>TechDisplayItem.cs (特定项更新)</strong>
+                <ul>
+                    <li class="method-call">如果其显示的科技状态发生改变，之前注册的 `UpdateUIBasedOnStatus` (绑定到 `Technology.Status`) 会被触发</li>
+                    <li class="method-call">如果该项是当前研究项，之前注册的 `UpdateProgressBar` (绑定到 `ResearchSystem.CurrentResearchProgressNormalized`) 会被触发</li>
+                    <li class="method-call">UI项根据新数据更新自身显示</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="flow-container">
+        <h2 class="flow-title">流程二：新的一天开始 (简化版)</h2>
+        <ul>
+            <li class="ui-controller">
+                <strong>GameLoop.cs</strong>
+                <ul>
+                    <li class="method-call">`Update()` 中调用 `mDayNightSystem.UpdateDayCycle(deltaTime)`</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (方法调用)</li>
+            <li class="system">
+                <strong>DayNightSystem.cs</strong>
+                <ul>
+                    <li class="method-call">`UpdateDayCycle(deltaTime)` 中判断是否到达新的一天</li>
+                    <li class="method-call">调用 `mGameDataModel.IncrementDay()`</li>
+                    <li class="sends-event">发送 `DayChangedEvent(newDay)` (QFramework Event)</li>
+                    <li class="method-call">调用 `mCombatSystem.SpawnZombieWaveForDay(newDay)`</li>
+                    <li class="method-call">调用 `mEventSystem.TryTriggerRandomEvent()`</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (方法调用)</li>
+            <li class="model">
+                <strong>GameDataModel.cs</strong>
+                <ul>
+                    <li class="method-call">执行 `IncrementDay()`</li>
+                    <li class="bindable-update">更新 `CurrentDay.Value` (BindableProperty)</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (绑定通知 / QFramework Event)</li>
+            <li class="ui-controller">
+                <strong>DayDisplay.cs</strong>
+                <ul>
+                    <li class="method-call">之前注册的对 `GameDataModel.CurrentDay` 的回调被触发</li>
+                    <li class="method-call">UI更新天数显示</li>
+                </ul>
+            </li>
+            <li class="system">
+                <strong>CombatSystem.cs</strong>
+                <ul>
+                    <li class="method-call">执行 `SpawnZombieWaveForDay(day)`</li>
+                    <li class="reads-writes">与 `EnemyModel` 交互添加僵尸</li>
+                </ul>
+            </li>
+            <li class="system">
+                <strong>GEventSystem.cs</strong> (EventSystem.cs)
+                <ul>
+                    <li class="method-call">执行 `TryTriggerRandomEvent()`</li>
+                    <li class="reads-writes">与 `EventModel` 交互设置当前随机事件 (`CurrentEvent.Value`)</li>
+                    <li class="method-call">执行具体 `RandomEvent` 子类的 `Execute()`</li>
+                    <li class="sends-event">发送 `System_RandomEventExecutedEvent`</li>
+                </ul>
+            </li>
+            <li class="arrow">⬇️ (绑定通知)</li>
+            <li class="ui-controller">
+                <strong>EventDisplay.cs</strong>
+                <ul>
+                    <li class="method-call">之前注册的对 `EventModel.CurrentEvent` 的回调被触发</li>
+                    <li class="method-call">UI更新当前随机事件显示</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+</body>
+</html>
