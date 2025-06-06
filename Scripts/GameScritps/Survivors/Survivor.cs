@@ -20,6 +20,13 @@ namespace YourGameNamespace.Survivors
         public BindableProperty<float> RestLevel { get; private set; } // 当前休息等级
         public float MaxRestLevel { get; private set; } = 100f;     // 最大休息等级，默认为100
 
+        // 新增：战斗相关属性
+        public BindableProperty<float> AttackPower { get; private set; } // 攻击力
+        public BindableProperty<float> AttackRange { get; private set; } // 攻击范围
+        public BindableProperty<float> AttackCooldownTime { get; private set; } // 攻击冷却总时间
+        public BindableProperty<float> CurrentAttackCooldown { get; private set; } // 当前攻击冷却剩余时间
+
+
         // 构造函数
         public Survivor(string name, SurvivorAttributes attributes, SurvivorProfession profession)
         {
@@ -34,6 +41,12 @@ namespace YourGameNamespace.Survivors
             WorkstationId = new BindableProperty<Guid?>(null);         // 初始未分配到任何工作站
             FoodLevel = new BindableProperty<float>(MaxFoodLevel);      // 初始食物等级为最大值
             RestLevel = new BindableProperty<float>(MaxRestLevel);      // 初始休息等级为最大值
+
+            // 初始化战斗属性
+            AttackPower = new BindableProperty<float>(5f);       // 默认攻击力 5
+            AttackRange = new BindableProperty<float>(1.5f);     // 默认攻击范围 1.5 单位
+            AttackCooldownTime = new BindableProperty<float>(2.0f); // 默认攻击间隔 2 秒
+            CurrentAttackCooldown = new BindableProperty<float>(0f); // 初始时攻击已准备好
         }
 
         // 公共方法来修改这些 BindableProperty 的值
@@ -72,6 +85,37 @@ namespace YourGameNamespace.Survivors
         public void AdjustRestLevel(float amount)
         {
             RestLevel.Value = Mathf.Clamp(RestLevel.Value + amount, 0f, MaxRestLevel);
+        }
+
+        // 新增：战斗冷却管理方法
+
+        /// <summary>
+        /// 重置攻击冷却时间。通常在攻击后调用。
+        /// </summary>
+        public void ResetAttackCooldown()
+        {
+            CurrentAttackCooldown.Value = AttackCooldownTime.Value;
+        }
+
+        /// <summary>
+        /// 更新攻击冷却倒计时。
+        /// </summary>
+        /// <param name="deltaTime">经过的时间 (秒)</param>
+        public void UpdateAttackCooldown(float deltaTime)
+        {
+            if (CurrentAttackCooldown.Value > 0)
+            {
+                CurrentAttackCooldown.Value = Mathf.Max(0f, CurrentAttackCooldown.Value - deltaTime);
+            }
+        }
+
+        /// <summary>
+        /// 检查攻击是否已准备好 (冷却时间已过)。
+        /// </summary>
+        /// <returns>如果攻击准备好则返回true，否则返回false。</returns>
+        public bool IsAttackReady()
+        {
+            return CurrentAttackCooldown.Value <= 0f;
         }
     }
 }

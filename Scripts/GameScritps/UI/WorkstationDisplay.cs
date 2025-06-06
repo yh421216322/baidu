@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System; // For Guid
 using QFramework;
 using YourGameNamespace.Workstations;
+using YourGameNamespace.Survivors; // 需要 SurvivorModel
 using YourGameNamespace.Events; // For Model_WorkstationRegisteredEvent
 using System.Linq; // For potential Linq operations
 using MyGameNamespace; // For IObjectPoolSystem, assuming it's in MyGameNamespace
@@ -13,13 +14,16 @@ namespace YourGameNamespace.UI
 {
     public class WorkstationDisplay : MonoBehaviour, IController
     {
-        // public GameObject workstationItemPrefab; // Removed
         private readonly string workstationItemPrefabName = "Prefabs/UI/Items/WorkstationItem_PF";
         public Transform workstationListContainer;
+        // 为管理面板添加预制件路径字段，确保在Inspector中赋值或此处提供有效默认值
+        public string workstationManagementPanelPrefabPath = "Prefabs/UI/WorkstationManagementPanel_PF";
+
 
         private WorkstationModel mWorkstationModel;
+        private SurvivorModel mSurvivorModel; // 添加 SurvivorModel 引用
         private ObjectPoolSystem mObjectPoolSystem;
-        // private SurvivorModel mSurvivorModel; // Already removed
+        private GameObject mCurrentManagementPanel; // 当前打开的管理面板实例
 
         public IArchitecture GetArchitecture() => RegisterManager.Interface;
 
@@ -32,7 +36,8 @@ namespace YourGameNamespace.UI
                 return;
             }
 
-            mWorkstationModel = this.GetModel<WorkstationModel>(); // Use IWorkstationModel if interface exists
+            mWorkstationModel = this.GetModel<WorkstationModel>();
+            mSurvivorModel = this.GetModel<SurvivorModel>(); // 获取 SurvivorModel
 
             if (mWorkstationModel == null)
             {
@@ -40,26 +45,60 @@ namespace YourGameNamespace.UI
                 enabled = false;
                 return;
             }
+            if (mSurvivorModel == null)
+            {
+                Debug.LogError("WorkstationDisplay: 未能获取到 SurvivorModel！管理面板可能无法正确显示幸存者。");
+                // 根据游戏设计，这可能是也可能不是一个使整个脚本失效的错误
+            }
+
 
             if (workstationListContainer == null) Debug.LogError("WorkstationDisplay: workstationListContainer 未在检视面板中分配！");
-            // if (workstationItemPrefab == null) Debug.LogError("WorkstationDisplay: workstationItemPrefab 未在检视面板中分配！"); // Removed
 
             mObjectPoolSystem = this.GetSystem<ObjectPoolSystem>();
             if (mObjectPoolSystem == null)
             {
-                Debug.LogError("WorkstationDisplay: 未能获取到 IObjectPoolSystem！列表项将无法通过对象池创建。");
+                Debug.LogError("WorkstationDisplay: 未能获取到 IObjectPoolSystem！列表项和管理面板将无法通过对象池创建。");
             }
+             if (string.IsNullOrEmpty(workstationManagementPanelPrefabPath))
+            {
+                Debug.LogError("WorkstationDisplay: 工作站管理面板预制件路径未设置!");
+            }
+
 
             // Register for events
             this.RegisterEvent<Model_WorkstationRegisteredEvent>(e => RefreshWorkstationList()).UnRegisterWhenGameObjectDestroyed(this.gameObject);
-            // TODO: Listen for Model_WorkstationRemovedEvent if workstations can be removed
+            // 监听工作站分配变化事件，该事件应在 AssignSurvivorToWorkstationCommand 和 UnassignSurvivorFromWorkstationCommand 成功后发送
+            // 如果没有特定的 WorkstationAssignmentsChangedEvent，可以考虑监听一个更通用的数据更新事件，
+            // 或者在管理面板关闭时强制刷新。为简化，这里假设存在一个这样的事件。
+            // 你可能需要创建 YourGameNamespace.Commands.WorkstationAssignmentsChangedEvent
+            // this.RegisterEvent<WorkstationAssignmentsChangedEvent>(e => RefreshWorkstationListForSpecific(e.WorkstationId)).UnRegisterWhenGameObjectDestroyed(this.gameObject);
+            // 简单的刷新方式：
+            this.RegisterEvent<YourGameNamespace.Commands.AssignSurvivorToWorkstationCommand.CompletedEvent>(e => RefreshWorkstationList());
+            this.RegisterEvent<YourGameNamespace.Commands.UnassignSurvivorFromWorkstationCommand.CompletedEvent>(e => RefreshWorkstationList());
+
 
             RefreshWorkstationList(); // Initial refresh
         }
 
+        // 可选：如果只想刷新特定工作站的显示而不是整个列表
+        // void RefreshWorkstationListForSpecific(Guid workstationId)
+        // {
+        //     foreach(Transform child in workstationListContainer)
+        //     {
+        //         var itemUI = child.GetComponent<WorkstationListItemUI>();
+        //         if (itemUI != null && itemUI.WorkstationId == workstationId)
+        //         {
+        //             Workstation station = mWorkstationModel.GetWorkstationById(workstationId);
+        //             if (station != null) itemUI.Setup(station, this); // 假设Setup可以被这样调用来刷新
+        //             break;
+        //         }
+        //     }
+        // }
+
+
         void RefreshWorkstationList()
         {
-            if (mWorkstationModel == null || workstationListContainer == null) // Removed workstationItemPrefab from check
+            if (mWorkstationModel == null || workstationListContainer == null)
             {
                 Debug.LogError("WorkstationDisplay: 无法刷新工作站列表，缺少依赖项（Model or Container）。");
                 return;
@@ -119,15 +158,80 @@ namespace YourGameNamespace.UI
 
         public void RequestAssignSurvivorToWorkstation(Guid workstationId)
         {
-            // This method would be called by WorkstationListItemUI instances
-            // Further UI logic might be needed here to select a survivor
-            Debug.Log($"WorkstationDisplay: 请求为工作站 {workstationId} 分配幸存者 (具体选择和命令发送逻辑待实现)。");
-            // Example of sending a command:
-            // Guid survivorToAssign = ...; // Logic to get survivor ID
-            // this.SendCommand(new AssignSurvivorToWorkstationCommand(survivorToAssign, workstationId));
+            if (mObjectPoolSystem == null) {
+                Debug.LogError("WorkstationDisplay: ObjectPoolSystem 未初始化，无法打开管理面板。");
+                return;
+            }
+            if (mSurvivorModel == null) {
+                 Debug.LogError("WorkstationDisplay: SurvivorModel 未初始化，无法打开管理面板。");
+                return;
+            }
+
+
+            if (mCurrentManagementPanel != null && mCurrentManagementPanel.activeSelf)
+            {
+                Debug.LogWarning("WorkstationDisplay: 管理面板已打开。请先关闭当前面板。");
+                // 可选：将现有面板带到最前或重新 Setup
+                // var existingController = mCurrentManagementPanel.GetComponent<WorkstationManagementPanelController>();
+                // if (existingController != null) existingController.Setup(workstationId, mWorkstationModel, mSurvivorModel);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(workstationManagementPanelPrefabPath))
+            {
+                Debug.LogError("WorkstationDisplay: 工作站管理面板预制件路径为空，无法打开面板。");
+                return;
+            }
+
+            mCurrentManagementPanel = mObjectPoolSystem.Spawn(workstationManagementPanelPrefabPath);
+
+            if (mCurrentManagementPanel == null)
+            {
+                Debug.LogError($"WorkstationDisplay: 无法从对象池实例化或生成管理面板: {workstationManagementPanelPrefabPath}");
+                return;
+            }
+
+            GameObject mainCanvas = GameObject.FindGameObjectWithTag("MainCanvas");
+            if (mainCanvas != null)
+            {
+                mCurrentManagementPanel.transform.SetParent(mainCanvas.transform, false);
+            }
+            else
+            {
+                Debug.LogWarning("WorkstationDisplay: 未找到具有 'MainCanvas' 标签的Canvas。管理面板可能层级不正确。");
+            }
+
+            mCurrentManagementPanel.transform.localPosition = Vector3.zero;
+            mCurrentManagementPanel.transform.localScale = Vector3.one;
+            RectTransform panelRect = mCurrentManagementPanel.GetComponent<RectTransform>();
+            if (panelRect != null) {
+                panelRect.anchorMin = Vector2.zero;
+                panelRect.anchorMax = Vector2.one;
+                panelRect.offsetMin = Vector2.zero;
+                panelRect.offsetMax = Vector2.zero;
+            }
+
+            var panelController = mCurrentManagementPanel.GetComponent<WorkstationManagementPanelController>();
+            if (panelController != null)
+            {
+                panelController.Setup(workstationId, mWorkstationModel, mSurvivorModel);
+            }
+            else
+            {
+                Debug.LogError($"WorkstationDisplay: 管理面板预制件 {workstationManagementPanelPrefabPath} 上缺少 WorkstationManagementPanelController 脚本。");
+                mObjectPoolSystem.Unspawn(mCurrentManagementPanel);
+                mCurrentManagementPanel = null;
+            }
         }
 
-        // Update() method is removed as list updates are now event-driven,
-        // and individual item updates are handled by WorkstationListItemUI.
+        void OnDestroy()
+        {
+            // 确保回收当前打开的面板，如果存在的话
+            if (mCurrentManagementPanel != null && mObjectPoolSystem != null) {
+                mObjectPoolSystem.Unspawn(mCurrentManagementPanel);
+                mCurrentManagementPanel = null;
+            }
+            // QFramework的UnRegisterWhenGameObjectDestroyed会自动处理事件解注册
+        }
     }
 }

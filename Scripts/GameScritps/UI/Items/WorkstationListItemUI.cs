@@ -1,7 +1,7 @@
 using QFramework;
-// using TMPro; // Removed
+using TMPro; // Enabled
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UI; // Still need for Slider, Button
 using YourGameNamespace.Workstations;
 using System;
 using System.Collections.Generic;
@@ -11,10 +11,10 @@ namespace YourGameNamespace.UI
     public class WorkstationListItemUI : MonoBehaviour
     {
         // --- UI Element References (to be linked in Unity Editor or found in Awake) ---
-        public Text stationTypeText;
-        public Text assignedSurvivorsText;
+        public TextMeshProUGUI stationTypeText;
+        public TextMeshProUGUI assignedSurvivorsText;
         public Slider productionProgressBar;
-        public Text productionProgressText;
+        public TextMeshProUGUI productionProgressText;
         public Button manageButton;
 
         // --- Private fields ---
@@ -24,10 +24,10 @@ namespace YourGameNamespace.UI
 
         private void Awake()
         {
-            stationTypeText = stationTypeText ?? transform.Find("StationTypeText")?.GetComponent<Text>();
-            assignedSurvivorsText = assignedSurvivorsText ?? transform.Find("AssignedSurvivorsText")?.GetComponent<Text>();
+            stationTypeText = stationTypeText ?? transform.Find("StationTypeText")?.GetComponent<TextMeshProUGUI>();
+            assignedSurvivorsText = assignedSurvivorsText ?? transform.Find("AssignedSurvivorsText")?.GetComponent<TextMeshProUGUI>();
             productionProgressBar = productionProgressBar ?? transform.Find("ProductionProgressBar")?.GetComponent<Slider>();
-            productionProgressText = productionProgressText ?? transform.Find("ProductionProgressText")?.GetComponent<Text>();
+            productionProgressText = productionProgressText ?? transform.Find("ProductionProgressText")?.GetComponent<TextMeshProUGUI>();
             manageButton = manageButton ?? transform.Find("ManageButton")?.GetComponent<Button>();
 
             if (stationTypeText == null) Debug.LogError("WorkstationListItemUI: StationTypeText not found or linked.");
@@ -35,6 +35,10 @@ namespace YourGameNamespace.UI
             if (productionProgressBar == null) Debug.LogError("WorkstationListItemUI: ProductionProgressBar not found or linked.");
             if (productionProgressText == null) Debug.LogError("WorkstationListItemUI: ProductionProgressText not found or linked.");
             if (manageButton == null) Debug.LogError("WorkstationListItemUI: ManageButton not found or linked.");
+            // It's good practice to also check if the manageButton has a TextMeshProUGUI child if you plan to change its text
+            // For example:
+            // var manageButtonText = manageButton?.GetComponentInChildren<TextMeshProUGUI>();
+            // if (manageButtonText == null) Debug.LogWarning("WorkstationListItemUI: ManageButton does not have a TextMeshProUGUI child for its label.");
         }
 
         public void Setup(Workstation workstation, WorkstationDisplay parentDisplay)

@@ -46,8 +46,8 @@ namespace YourGameNamespace.Combat
         public float SurvivorAttackPowerMultiplier { get; private set; } = 1.0f; // 幸存者攻击力乘数，set改为private
         public GameResourceType AmmoType { get; set; } = GameResourceType.Ammo; // 弹药类型
         public int AmmoCostPerShot { get; set; } = 1; // 每次射击弹药消耗
-        private float mTimeSinceLastSurvivorAttack = 0f; // 自上次幸存者攻击以来的时间
-        private float mSurvivorAttackCooldown = 1f; // 幸存者攻击冷却时间
+        // private float mTimeSinceLastSurvivorAttack = 0f; // 自上次幸存者攻击以来的时间 - REMOVED
+        // private float mSurvivorAttackCooldown = 1f; // 幸存者攻击冷却时间 - REMOVED
 
         protected override void OnInit()
         {
@@ -234,65 +234,70 @@ namespace YourGameNamespace.Combat
             }
             
             // 如果基地被摧毁，则停止进一步的攻击行动
-            if (mGameDataModel.BaseHealth.Value <= 0)  // 使用 .Value
+            if (mGameDataModel.BaseHealth.Value <= 0)
             {
                  foreach (var deadZombie in zombiesToRemove) { mEnemyModel.RemoveZombie(deadZombie); }
                  return;
             }
 
-            // 幸存者行动
-            mTimeSinceLastSurvivorAttack += deltaTime;
-            if (mTimeSinceLastSurvivorAttack >= mSurvivorAttackCooldown)
+            // 新的幸存者独立攻击逻辑
+            foreach (Survivor survivor in mSurvivorModel.GetAllSurvivors())
             {
-                List<Survivor> availableDefenders = mSurvivorModel.GetAllSurvivors()
-                    .FindAll(s => s.Status.Value == SurvivorStatus.Idle || s.Profession.Value == SurvivorProfession.Soldier); // 使用 .Value
-
-                bool livingZombiesExist = false;
-                foreach(var z in mEnemyModel.GetAllZombies()) {
-                    if (!z.IsDead.Value) { // 使用 .Value
-                        livingZombiesExist = true;
-                        break;
-                    }
+                // 只允许空闲或士兵职业的幸存者参与自动防御
+                if (survivor.Status.Value != SurvivorStatus.Idle && survivor.Profession.Value != SurvivorProfession.Soldier)
+                {
+                    continue;
                 }
 
-                if (availableDefenders.Count > 0 && livingZombiesExist)
-                {
-                    if (mResourceModel.HasEnough(AmmoType, AmmoCostPerShot * availableDefenders.Count))
-                    {
-                        if (mResourceModel.ConsumeResource(AmmoType, AmmoCostPerShot * availableDefenders.Count))
-                        {
-                            mTimeSinceLastSurvivorAttack = 0f;
-                            Debug.Log($"{availableDefenders.Count} 名防御者正在攻击！");
-                            foreach (var defender in availableDefenders)
-                            {
-                                Zombie targetZombie = FindClosestZombie(BasePosition); 
-                                if (targetZombie != null && !targetZombie.IsDead.Value && Vector2.Distance(BasePosition, targetZombie.Position) < SurvivorAttackRange) // 使用 .Value
-                                {
-                                    int currentAttackPower = (int)(BaseSurvivorAttackPower * SurvivorAttackPowerMultiplier);
-                                    int damage = currentAttackPower;
-                                    if (defender.Profession.Value == SurvivorProfession.Soldier) // 使用 .Value
-                                    {
-                                        damage = (int)(currentAttackPower * 1.5f);
-                                    }
-                                    Debug.Log($"{defender.Name.Value} 攻击僵尸 {targetZombie.Id}，造成 {damage} 点伤害 (基础: {BaseSurvivorAttackPower}, 倍率: {SurvivorAttackPowerMultiplier:F2})。"); // 使用 .Value
-                                    targetZombie.TakeDamage(damage);
+                survivor.UpdateAttackCooldown(deltaTime);
 
-                                    if (targetZombie.IsDead.Value) // 检查 BindableProperty 的值
+                if (survivor.IsAttackReady())
+                {
+                    Zombie targetZombie = FindClosestZombie(BasePosition); // 假设所有幸存者从基地中心点索敌
+
+                    if (targetZombie != null && !targetZombie.IsDead.Value &&
+                        Vector2.Distance(BasePosition, targetZombie.Position) <= survivor.AttackRange.Value)
+                    {
+                        // 检查弹药 - 每个攻击者独立消耗
+                        if (mResourceModel.HasEnough(AmmoType, AmmoCostPerShot))
+                        {
+                            if (mResourceModel.ConsumeResource(AmmoType, AmmoCostPerShot)) // 消耗弹药
+                            {
+                                float totalDamage = survivor.AttackPower.Value;
+                                if (survivor.Profession.Value == SurvivorProfession.Soldier)
+                                {
+                                    totalDamage *= 1.5f; // 士兵职业伤害加成
+                                }
+                                totalDamage *= SurvivorAttackPowerMultiplier; // 全局攻击力乘数
+
+                                targetZombie.TakeDamage((int)totalDamage);
+                                Debug.Log($"{survivor.Name.Value} 攻击了僵尸 {targetZombie.Id}，造成 {(int)totalDamage} 点伤害。弹药剩余: {mResourceModel.GetAmount(AmmoType)}");
+
+                                survivor.ResetAttackCooldown(); // 重置当前幸存者的攻击冷却
+
+                                if (targetZombie.IsDead.Value)
+                                {
+                                    Debug.Log($"僵尸 {targetZombie.Id} 已被 {survivor.Name.Value} 击杀。");
+                                    this.SendEvent(new Combat_ZombieDiedEvent() { ZombieId = targetZombie.Id });
+                                    if (!zombiesToRemove.Contains(targetZombie))
                                     {
-                                        Debug.Log($"僵尸 {targetZombie.Id} 已被击杀。"); // 日志确认
-                                        this.SendEvent(new Combat_ZombieDiedEvent() { ZombieId = targetZombie.Id });
-                                        if (!zombiesToRemove.Contains(targetZombie)) // 确保不重复添加
-                                        {
-                                            zombiesToRemove.Add(targetZombie);
-                                        }
+                                        zombiesToRemove.Add(targetZombie);
                                     }
                                 }
-                                else if (targetZombie == null) { break; }
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"{survivor.Name.Value} 尝试攻击，弹药检查通过但消耗失败！");
                             }
                         }
-                        else { Debug.LogWarning("弹药检查通过但消耗资源失败。"); }
+                        else
+                        {
+                            Debug.Log($"{survivor.Name.Value} 想要攻击，但弹药不足！");
+                            // 注意：这里仅此幸存者不攻击，其他幸存者可能仍有弹药攻击。
+                            // 如果希望所有幸存者共享一个弹药耗尽状态然后集体停止，则需要额外逻辑。
+                        }
                     }
-                    else { Debug.Log("防御者想攻击，但弹药不足！"); }
+                    // else: no suitable target in range for this survivor
                 }
             }
 
