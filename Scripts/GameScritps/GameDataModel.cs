@@ -11,14 +11,21 @@ namespace YourGameNamespace.Framework
         // 玩家基地的当前健康值，使用 BindableProperty 以便UI或其他模块可以监听其变化
         public BindableProperty<float> BaseHealth { get; private set; }
 
+        /// <summary>
+        /// 当前基地的总住房容量
+        /// </summary>
+        public BindableProperty<int> MaxHousingCapacity { get; private set; } // 总住房容量
+
         private const float MAX_BASE_HEALTH = 100f; // 定义基地最大生命值常量
 
         // 模型初始化时调用
         protected override void OnInit()
         {
             // 初始化 BindableProperty
-            CurrentDay = new BindableProperty<int>(1);
-            BaseHealth = new BindableProperty<float>(MAX_BASE_HEALTH);
+            CurrentDay = new BindableProperty<int>(1); // 初始第一天
+            BaseHealth = new BindableProperty<float>(MAX_BASE_HEALTH); // 初始满生命值
+            MaxHousingCapacity = new BindableProperty<int>(0); // 初始住房容量为0，完全依赖建筑提供
+            Debug.Log("游戏数据模型 (GameDataModel) 初始化完成，初始住房容量：" + MaxHousingCapacity.Value);
         }
 
         // 增加天数
@@ -60,8 +67,18 @@ namespace YourGameNamespace.Framework
         {
             CurrentDay.Value = 1;
             BaseHealth.Value = MAX_BASE_HEALTH;
+            MaxHousingCapacity.Value = 0; // 重置住房容量为初始值
             // 如果需要一个明确的游戏数据重置事件，可以在此发送:
             // this.SendEvent(new Model_GameDataResetEvent());
+            Debug.Log("游戏数据模型 (GameDataModel) 数据已重置。");
         }
+
+        // 公共方法用于建筑系统等外部系统修改最大住房容量
+        // BuildingSystem 将直接修改 MaxHousingCapacity.Value
+        // public void UpdateMaxHousingCapacity(int change)
+        // {
+        //     MaxHousingCapacity.Value += change;
+        //     Debug.Log($"最大住房容量已更新: {MaxHousingCapacity.Value} (变化量: {change})");
+        // }
     }
 }

@@ -2,6 +2,7 @@ using YourGameNamespace.Workstations; // 用于 WorkstationType 枚举
 using YourGameNamespace.Survivors;  // 用于 Survivor 类型
 using YourGameNamespace.Enemies;    // 用于 Zombie 类型
 using System;                       // 用于 Guid 类型
+using YourGameNamespace.Buildings; // For Building class and BuildingType enum
 
 // 注意：以下事件定义中的注释主要解释事件的用途和包含的数据。
 // 事件类本身不直接依赖于 ExplorationOutcome 或 Technology 的完整对象，通常只需要ID。
@@ -194,6 +195,42 @@ namespace YourGameNamespace.Events
         public string PoiId;
         public System.Collections.Generic.List<System.Guid> SurvivorIds; // Ensure System.Collections.Generic is used or List<Guid>
         public string Reason; // 失败的原因
+    }
+
+    /// <summary>
+    /// 当尝试分配幸存者到工作站操作完成后的事件
+    /// </summary>
+    public struct AssignSurvivorToWorkstationResultEvent {
+        public Guid SurvivorId;
+        public Guid WorkstationId;
+        public bool Success;
+        public string FailureReasonKey; // 可选，用于UI本地化错误信息
+    }
+
+    // --- 以下是与建筑模型 (BuildingModel) 相关的事件 ---
+
+    /// <summary>
+    /// 当一个新建筑在模型中注册（通常表示建造完成）时发送
+    /// </summary>
+    public struct Model_BuildingConstructedEvent {
+        public Building BuildingData; // 包含新建造建筑的完整数据
+    }
+
+    /// <summary>
+    /// 当一个建筑从模型中移除（通常表示被拆除）时发送
+    /// </summary>
+    public struct Model_BuildingDemolishedEvent {
+        public Guid BuildingId; // 被移除建筑的ID
+        public BuildingType BuildingType; // 被移除建筑的类型
+    }
+
+    /// <summary>
+    /// 当通过 BuildBuildingCommand 尝试建造建筑操作完成后的事件
+    /// </summary>
+    public struct BuildBuildingResultEvent {
+        public BuildingType BuildingTypeAttempted; // 尝试建造的建筑类型
+        public bool Success;                     // 是否成功
+        public string FailureReasonKey;          // 可选，用于UI本地化错误信息 (例如 "INSUFFICIENT_RESOURCES")
     }
 }
 // 确保文件顶部有:

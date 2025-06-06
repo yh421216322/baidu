@@ -1,23 +1,21 @@
 using QFramework;
-using TMPro; // Enabled
+using TMPro; // Ensure this is used
 using UnityEngine;
-using UnityEngine.UI; // Still need for Slider, Button
+using UnityEngine.UI;
 using YourGameNamespace.Workstations;
 using System;
-using System.Collections.Generic;
+using System.Collections.Generic; // For List<IUnRegister>
 
 namespace YourGameNamespace.UI
 {
-    public class WorkstationListItemUI : MonoBehaviour
+    public class WorkstationListItemUI : MonoBehaviour, IPoolable // Added IPoolable
     {
-        // --- UI Element References (to be linked in Unity Editor or found in Awake) ---
-        public TextMeshProUGUI stationTypeText;
-        public TextMeshProUGUI assignedSurvivorsText;
+        public TextMeshProUGUI stationTypeText; // Changed to TextMeshProUGUI
+        public TextMeshProUGUI assignedSurvivorsText; // Changed to TextMeshProUGUI
         public Slider productionProgressBar;
-        public TextMeshProUGUI productionProgressText;
+        public TextMeshProUGUI productionProgressText; // Changed to TextMeshProUGUI
         public Button manageButton;
 
-        // --- Private fields ---
         private Workstation mWorkstation;
         private WorkstationDisplay mParentDisplay;
         private List<IUnRegister> mUnregisters = new List<IUnRegister>();
@@ -30,15 +28,8 @@ namespace YourGameNamespace.UI
             productionProgressText = productionProgressText ?? transform.Find("ProductionProgressText")?.GetComponent<TextMeshProUGUI>();
             manageButton = manageButton ?? transform.Find("ManageButton")?.GetComponent<Button>();
 
-            if (stationTypeText == null) Debug.LogError("WorkstationListItemUI: StationTypeText not found or linked.");
-            if (assignedSurvivorsText == null) Debug.LogError("WorkstationListItemUI: AssignedSurvivorsText not found or linked.");
-            if (productionProgressBar == null) Debug.LogError("WorkstationListItemUI: ProductionProgressBar not found or linked.");
-            if (productionProgressText == null) Debug.LogError("WorkstationListItemUI: ProductionProgressText not found or linked.");
-            if (manageButton == null) Debug.LogError("WorkstationListItemUI: ManageButton not found or linked.");
-            // It's good practice to also check if the manageButton has a TextMeshProUGUI child if you plan to change its text
-            // For example:
-            // var manageButtonText = manageButton?.GetComponentInChildren<TextMeshProUGUI>();
-            // if (manageButtonText == null) Debug.LogWarning("WorkstationListItemUI: ManageButton does not have a TextMeshProUGUI child for its label.");
+            if (stationTypeText == null) Debug.LogError("WorkstationListItemUI: stationTypeText 未找到或未链接!");
+            if (assignedSurvivorsText == null) Debug.LogError("WorkstationListItemUI: assignedSurvivorsText 未找到或未链接!");
         }
 
         public void Setup(Workstation workstation, WorkstationDisplay parentDisplay)
@@ -50,7 +41,7 @@ namespace YourGameNamespace.UI
 
             if (mWorkstation == null)
             {
-                if (stationTypeText) stationTypeText.text = "N/A";
+                if (stationTypeText) stationTypeText.text = "无效工作站";
                 if (assignedSurvivorsText) assignedSurvivorsText.text = "人数: N/A";
                 if (productionProgressBar) productionProgressBar.gameObject.SetActive(false);
                 if (productionProgressText) productionProgressText.text = "";
@@ -61,10 +52,14 @@ namespace YourGameNamespace.UI
             if (productionProgressBar) productionProgressBar.gameObject.SetActive(true);
 
             if (stationTypeText) stationTypeText.text = $"类型: {GetLocalizedWorkstationType(mWorkstation.Type)}";
+
             mWorkstation.AssignedSurvivorCount.RegisterWithInitValue(UpdateAssignedSurvivorsUI)
-                .UnRegisterWhenGameObjectDestroyed(this.gameObject);
+                .UnRegisterWhenGameObjectDestroyed(this.gameObject)
+                .AddTo(mUnregisters);
+
             mWorkstation.ProductionProgress.RegisterWithInitValue(UpdateProductionProgressUI)
-                .UnRegisterWhenGameObjectDestroyed(this.gameObject);
+                .UnRegisterWhenGameObjectDestroyed(this.gameObject)
+                .AddTo(mUnregisters);
 
             if (manageButton != null)
             {
@@ -73,22 +68,25 @@ namespace YourGameNamespace.UI
             }
         }
 
-        private void UpdateAssignedSurvivorsUI(int count)
+        private void UpdateAssignedSurvivorsUI(int currentCount)
         {
-            if (assignedSurvivorsText != null) assignedSurvivorsText.text = $"人数: {count}";
+            if (assignedSurvivorsText != null && mWorkstation != null)
+            {
+                assignedSurvivorsText.text = $"人数: {currentCount}/{mWorkstation.MaxAssignedSurvivors}";
+            }
         }
 
         private void UpdateProductionProgressUI(float progress)
         {
             if (mWorkstation == null) return;
-            float normalizedProgress = 0f;
+            float normalizedProgress = 0.0f; // Ensured valid float literal
             if (mWorkstation.ProductionCycleTime > 0)
             {
                 normalizedProgress = progress / mWorkstation.ProductionCycleTime;
             }
             else if (progress > 0)
             {
-                normalizedProgress = 1f;
+                normalizedProgress = 1.0f; // Ensured valid float literal
             }
 
             if (productionProgressBar != null) productionProgressBar.value = normalizedProgress;
@@ -100,13 +98,21 @@ namespace YourGameNamespace.UI
             if (mWorkstation != null && mParentDisplay != null)
             {
                 mParentDisplay.RequestAssignSurvivorToWorkstation(mWorkstation.Id);
-                UnityEngine.Debug.Log($"请求管理工作站: {mWorkstation.Type} (ID: {mWorkstation.Id})");
+                UnityEngine.Debug.Log($"请求管理工作站: {GetLocalizedWorkstationType(mWorkstation.Type)} (ID: {mWorkstation.Id})");
             }
         }
 
         private string GetLocalizedWorkstationType(WorkstationType type)
         {
-            return type.ToString();
+            switch (type)
+            {
+                case WorkstationType.Farm: return "农场";
+                case WorkstationType.PowerPlant: return "发电厂";
+                case WorkstationType.Workshop: return "工坊";
+                case WorkstationType.Clinic: return "诊所";
+                case WorkstationType.ResearchLab: return "科研实验室";
+                default: return type.ToString();
+            }
         }
 
         private void ClearBindings()
@@ -118,7 +124,14 @@ namespace YourGameNamespace.UI
             mUnregisters.Clear();
         }
 
-        private void OnDestroy()
+        public void OnRecycled()
+        {
+            ClearBindings();
+            gameObject.SetActive(false);
+        }
+        public bool IsRecycled { get; set; }
+
+        void OnDestroy()
         {
             ClearBindings();
         }

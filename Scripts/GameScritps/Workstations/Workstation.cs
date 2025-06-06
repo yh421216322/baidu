@@ -18,6 +18,8 @@ namespace YourGameNamespace.Workstations
         public BindableProperty<float> ProductionProgress { get; private set; }
         // 新增 BindableProperty 用于已分配幸存者数量
         public BindableProperty<int> AssignedSurvivorCount { get; private set; }
+        public int MaxAssignedSurvivors { get; private set; } // 最大可分配幸存者数量
+        public Guid? AssociatedBuildingId { get; private set; } // 关联的Building实体的ID (可选)
 
         public float BaseProductionRate { get; private set; }  // 基础生产速率因子 (例如：1.0代表标准速度)
         public float ProductionCycleTime { get; private set; } // 完成一个生产周期所需的时间（秒），在基础速率为1.0时
@@ -31,10 +33,11 @@ namespace YourGameNamespace.Workstations
         public int FlatProductionBonus { get; set; } = 0;    // 固定生产加成值，默认为0
 
         // 构造函数，根据工作站类型初始化其属性
-        public Workstation(WorkstationType type)
+        public Workstation(WorkstationType type, Guid? associatedBuildingId = null)
         {
             Id = Guid.NewGuid(); // 生成新的唯一ID
             Type = type;
+            AssociatedBuildingId = associatedBuildingId; // 设置关联的Building ID
             AssignedSurvivorIds = new List<Guid>(); // 正确初始化列表
             ProductionProgress = new BindableProperty<float>(0f); // 初始化BindableProperty
             AssignedSurvivorCount = new BindableProperty<int>(0);   // 初始化BindableProperty
@@ -47,6 +50,7 @@ namespace YourGameNamespace.Workstations
                     OutputQuantity = 5;
                     BaseProductionRate = 1f;
                     ProductionCycleTime = 10f;
+                    this.MaxAssignedSurvivors = 3; // 农场最大3人
                     break;
 
                 case WorkstationType.PowerPlant:
@@ -54,6 +58,7 @@ namespace YourGameNamespace.Workstations
                     OutputQuantity = 10;
                     BaseProductionRate = 1f;
                     ProductionCycleTime = 12f;
+                    this.MaxAssignedSurvivors = 2; // 发电厂最大2人
                     break;
 
                 case WorkstationType.Workshop:
@@ -63,6 +68,7 @@ namespace YourGameNamespace.Workstations
                     InputQuantity = 1;
                     BaseProductionRate = 0.5f;
                     ProductionCycleTime = 15f;
+                    this.MaxAssignedSurvivors = 2; // 工坊最大2人
                     break;
 
                 case WorkstationType.Clinic:
@@ -72,6 +78,7 @@ namespace YourGameNamespace.Workstations
                     InputQuantity = 2;
                     BaseProductionRate = 1f;
                     ProductionCycleTime = 20f;
+                    this.MaxAssignedSurvivors = 1; // 诊所最大1人
                     break;
                 case WorkstationType.ResearchLab:
                     this.OutputResourceType = GameResourceType.ResearchPoints;
@@ -80,7 +87,13 @@ namespace YourGameNamespace.Workstations
                     this.ProductionCycleTime = 20f;
                     this.InputResourceType = GameResourceType.Power;
                     this.InputQuantity = 1;
-                    Debug.Log($"已初始化研究实验室：每 {this.ProductionCycleTime}秒 产出 {this.OutputQuantity} 单位 {this.OutputResourceType}，消耗 {this.InputQuantity} 单位 {this.InputResourceType}");
+                    this.MaxAssignedSurvivors = 1; // 科研实验室最大1人
+                    Debug.Log($"已初始化研究实验室：每 {this.ProductionCycleTime}秒 产出 {this.OutputQuantity} 单位 {this.OutputResourceType}，消耗 {this.InputQuantity} 单位 {this.InputResourceType}，最大人数：{this.MaxAssignedSurvivors}");
+                    break;
+                // Add a default case if new types might be added without explicit handling here, though enum should be exhaustive
+                default:
+                    Debug.LogError($"工作站类型 {type} 未在构造函数中设置 MaxAssignedSurvivors！将默认设置为1。");
+                    this.MaxAssignedSurvivors = 1; // 默认至少1人
                     break;
             }
         }
@@ -88,6 +101,13 @@ namespace YourGameNamespace.Workstations
         // 分配一个幸存者到此工作站
         public bool AssignSurvivor(Guid survivorId)
         {
+            // 检查是否已达到最大分配人数
+            if (AssignedSurvivorIds.Count >= MaxAssignedSurvivors)
+            {
+                Debug.LogWarning($"工作站 {Type} (ID: {Id.ToString().Substring(0,4)}) 已达到最大分配人数 ({MaxAssignedSurvivors})，无法分配更多幸存者。");
+                return false;
+            }
+
             if (!AssignedSurvivorIds.Contains(survivorId))
             {
                 AssignedSurvivorIds.Add(survivorId);
@@ -108,13 +128,20 @@ namespace YourGameNamespace.Workstations
             return removed;
         }
 
-        public float GetCurrentProductionRatePerSecond(SurvivorModel survivorModel)
+        public float GetCurrentProductionRatePerSecond(SurvivorModel survivorModel) // survivorModel param might be unused for now if scaling is purely count-based
         {
-            if (AssignedSurvivorIds.Count > 0)
+            // 如果没有幸存者分配，则生产速率为0
+            if (AssignedSurvivorIds.Count == 0)
             {
-                return BaseProductionRate;
+                return 0f;
             }
-            return 0f;
+
+            // 基础生产速率 * 有效的已分配幸存者数量
+            // AssignedSurvivorIds.Count 已通过 AssignSurvivor 方法确保不会超过 MaxAssignedSurvivors
+            float calculatedRate = BaseProductionRate * AssignedSurvivorIds.Count;
+
+            // Debug.Log($"工作站 {Type}: 基础速率 {BaseProductionRate}, 人数 {AssignedSurvivorIds.Count}, 计算速率 {calculatedRate}"); // 可选调试日志
+            return calculatedRate;
         }
 
         // 更新工作站的生产进度，由 WorkstationSystem 每帧调用

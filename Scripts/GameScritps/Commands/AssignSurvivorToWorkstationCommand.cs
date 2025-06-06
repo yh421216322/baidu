@@ -1,6 +1,8 @@
 using QFramework;
 using System; // For Guid
-using YourGameNamespace.Workstations; // For IWorkstationSystem
+using YourGameNamespace.Workstations;
+using YourGameNamespace.Events; // For the new event
+using UnityEngine; // For Debug.Log
 
 namespace YourGameNamespace.Commands
 {
@@ -8,6 +10,13 @@ namespace YourGameNamespace.Commands
     {
         private readonly Guid survivorId;
         private readonly Guid workstationId;
+
+        // Optional: QFramework convention for command-specific completion event
+        public struct CompletedEvent {
+            public Guid SurvivorId;
+            public Guid WorkstationId;
+            public bool Success;
+        }
 
         public AssignSurvivorToWorkstationCommand(Guid survivorId, Guid workstationId)
         {
@@ -18,16 +27,35 @@ namespace YourGameNamespace.Commands
         protected override void OnExecute()
         {
             var workstationSystem = this.GetSystem<IWorkstationSystem>();
+            // AssignSurvivorToWorkstation now returns a bool
+            bool success = workstationSystem.AssignSurvivorToWorkstation(this.survivorId, this.workstationId);
 
-            // WorkstationSystem.AssignSurvivorToWorkstation 方法内部会处理幸存者状态检查、
-            // 与SurvivorManagerSystem的交互等。
-            // 目前该方法没有bool返回值，Command执行后，UI依赖Model/Entity的事件/BindableProperty更新。
-            workstationSystem.AssignSurvivorToWorkstation(this.survivorId, this.workstationId);
+            string logMessage;
+            string failureKey = ""; // Used for localization key if needed
 
-            // 可以添加一个简单的日志确认Command已被执行
-            UnityEngine.Debug.Log($"命令：尝试分配幸存者 {this.survivorId} 到工作站 {this.workstationId} 的指令已执行。");
+            if (success)
+            {
+                logMessage = $"命令：成功分配幸存者 {this.survivorId} 到工作站 {this.workstationId}。";
+                Debug.Log(logMessage);
+            }
+            else
+            {
+                logMessage = $"命令：分配幸存者 {this.survivorId} 到工作站 {this.workstationId} 失败。具体原因请查看WorkstationSystem或Workstation类的日志。";
+                failureKey = "ASSIGN_FAIL_GENERAL"; // Example general failure key
+                // More specific keys could be set by WorkstationSystem if it returned a detailed result object
+                Debug.LogWarning(logMessage);
+            }
 
-            // 如果 AssignSurvivorToWorkstation 未来返回bool或抛出特定异常，可以在此处理并发送结果事件。
+            // Send the general result event for broader system listening
+            this.SendEvent(new AssignSurvivorToWorkstationResultEvent {
+                SurvivorId = this.survivorId,
+                WorkstationId = this.workstationId,
+                Success = success,
+                FailureReasonKey = failureKey
+            });
+
+            // Send the command-specific completed event (QFramework convention, optional)
+            this.SendEvent(new CompletedEvent { SurvivorId = this.survivorId, WorkstationId = this.workstationId, Success = success });
         }
     }
 }

@@ -1,71 +1,100 @@
 using MyGameNamespace;
 using UnityEngine;
-using UnityEngine.UI; // 用于 Text UI 组件
-using QFramework;     // QFramework 框架
-using YourGameNamespace.Framework; // 用于 GameDataModel (核心游戏数据模型)
-// using YourGameNamespace.Time; // DayNightSystem is no longer directly used here
+using TMPro; // 使用 TextMeshPro
+using QFramework;
+using YourGameNamespace.Framework;
+using YourGameNamespace.Survivors; // For ISurvivorModel
+using YourGameNamespace.Events;   // For Model_SurvivorAddedEvent and potentially Model_SurvivorRemovedEvent
 
 namespace YourGameNamespace.UI
 {
-    // UI组件，用于显示游戏内的天数、时间进度和基地健康状况
     public class DayDisplay : MonoBehaviour, IController
     {
-        // 在Unity检视面板中分配的UI Text组件
-        public Text dayText;        // 用于显示当前天数
-        public Text timeText;       // 用于显示当天时间进度或游戏状态（如游戏结束/胜利）
-        public Text baseHealthText; // 用于显示基地健康值
+        public TextMeshProUGUI dayText;
+        public TextMeshProUGUI timeText;
+        public TextMeshProUGUI baseHealthText;
+        public TextMeshProUGUI housingCapacityText; // 新增：住房容量文本
 
-        // 对所需模型和系统的引用
-        private GameDataModel mGameDataModel;
-        // private DayNightSystem mDayNightSystem; // Removed
-
-        //public IArchitecture GetArchitecture() => RegisterManager.Interface;
+        private IGameDataModel mGameDataModel; // 使用接口
+        private ISurvivorModel mSurvivorModel; // 使用接口
 
         private void Awake()
         {
-            // 使用空值合并操作符：如果Inspector中已赋值，则使用；否则，通过Find查找。
-            dayText = transform.Find("DayText").GetComponent<Text>();
-            dayText = dayText ?? transform.Find("DayText")?.GetComponent<Text>();
-            timeText = timeText ?? transform.Find("TimeText")?.GetComponent<Text>();
-            baseHealthText = baseHealthText ?? transform.Find("BaseHealthText")?.GetComponent<Text>();
+            // 更改为 GetComponent<TextMeshProUGUI>()
+            dayText = dayText ?? transform.Find("DayText")?.GetComponent<TextMeshProUGUI>();
+            timeText = timeText ?? transform.Find("TimeText")?.GetComponent<TextMeshProUGUI>();
+            baseHealthText = baseHealthText ?? transform.Find("BaseHealthText")?.GetComponent<TextMeshProUGUI>();
+            housingCapacityText = housingCapacityText ?? transform.Find("HousingCapacityText")?.GetComponent<TextMeshProUGUI>();
 
-            // 添加必要的null检查和错误日志
-            if (dayText == null) Debug.LogError("DayDisplay: UI元素 'DayText' 未能成功获取或链接。请检查Hierarchy中的命名和组件。");
-            if (timeText == null) Debug.LogError("DayDisplay: UI元素 'TimeText' 未能成功获取或链接。");
-            if (baseHealthText == null) Debug.LogError("DayDisplay: UI元素 'BaseHealthText' 未能成功获取或链接。");
+
+            if (dayText == null) Debug.LogError("DayDisplay: UI元素 'DayText' (TextMeshPro) 未能成功获取或链接。");
+            if (timeText == null) Debug.LogError("DayDisplay: UI元素 'TimeText' (TextMeshPro) 未能成功获取或链接。");
+            if (baseHealthText == null) Debug.LogError("DayDisplay: UI元素 'BaseHealthText' (TextMeshPro) 未能成功获取或链接。");
+            if (housingCapacityText == null) Debug.LogError("DayDisplay: UI元素 'HousingCapacityText' (TextMeshPro) 未能成功获取或链接!");
         }
 
-        void Start() // Unity生命周期方法，在第一次Update前执行
+        void Start()
         {
-            // 检查 GameArchitecture 是否已初始化
             if (RegisterManager.Interface == null)
             {
-                Debug.LogError("日期显示 (DayDisplay)：GameArchitecture 尚未初始化！此UI组件可能无法正常工作。请确保 GameInitializer 先运行。");
-                //this.enabled = false; // 禁用此组件以防止错误
+                Debug.LogError("日期显示 (DayDisplay)：GameArchitecture 尚未初始化！");
                 return;
             }
-            // 获取所需模型和系统的实例
-            mGameDataModel = this.GetModel<GameDataModel>();
 
-            // 检查依赖项是否成功获取
-            if (mGameDataModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取核心游戏数据模型 (GameDataModel)！");
-            // if (mDayNightSystem == null) Debug.LogError("日期显示 (DayDisplay)：未能获取昼夜系统 (DayNightSystem)！"); // Removed
-            if (dayText == null || timeText == null || baseHealthText == null) 
-                Debug.LogError("日期显示 (DayDisplay)：一个或多个必要的UI Text组件（dayText, timeText, baseHealthText）未在Unity检视面板中分配！");
+            mGameDataModel = this.GetModel<IGameDataModel>();
+            mSurvivorModel = this.GetModel<ISurvivorModel>(); // 获取幸存者模型
+
+            if (mGameDataModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取核心游戏数据模型 (IGameDataModel)！");
+            if (mSurvivorModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取幸存者数据模型 (ISurvivorModel)！");
+
+            if (dayText == null || timeText == null || baseHealthText == null || housingCapacityText == null)
+                Debug.LogError("日期显示 (DayDisplay)：一个或多个必要的UI TextMeshPro组件未在Unity检视面板中分配！");
 
             if (mGameDataModel != null)
             {
                 mGameDataModel.CurrentDay.RegisterWithInitValue(day => {
                     UpdateDayText(day);
-                    CheckGameEndConditions();
-                }).UnRegisterWhenGameObjectDestroyed(this.gameObject); // 使用 this.gameObject
+                    CheckGameEndConditions(); // 游戏结束条件检查也可能依赖天数
+                }).UnRegisterWhenGameObjectDestroyed(this.gameObject);
 
                 mGameDataModel.BaseHealth.RegisterWithInitValue(health => {
                     UpdateBaseHealthText(health);
                     CheckGameEndConditions();
-                }).UnRegisterWhenGameObjectDestroyed(this.gameObject); // 使用 this.gameObject
+                }).UnRegisterWhenGameObjectDestroyed(this.gameObject);
+
+                // 注册监听住房容量变化
+                mGameDataModel.MaxHousingCapacity.RegisterWithInitValue(UpdateHousingDisplayFromCapacityChange)
+                   .UnRegisterWhenGameObjectDestroyed(gameObject);
+            }
+
+            // 为了动态更新当前幸存者数量，监听幸存者增加/移除的事件
+            // 假设 SurvivorModel 发送这些事件
+            this.RegisterEvent<Model_SurvivorAddedEvent>(e => UpdateHousingDisplay())
+               .UnRegisterWhenGameObjectDestroyed(gameObject);
+            // 假设存在 Model_SurvivorRemovedEvent
+            // this.RegisterEvent<Model_SurvivorRemovedEvent>(e => UpdateHousingDisplay())
+            //    .UnRegisterWhenGameObjectDestroyed(gameObject);
+
+            // 初始刷新一次住房显示 (如果 MaxHousingCapacity 的 RegisterWithInitValue 不足以覆盖初始情况)
+            // UpdateHousingDisplay(); // RegisterWithInitValue for MaxHousingCapacity handles initial call with capacity
+        }
+
+        // Parameterized version for MaxHousingCapacity changes
+        private void UpdateHousingDisplayFromCapacityChange(int newMaxCapacity)
+        {
+            UpdateHousingDisplay(); // Just trigger the general update
+        }
+
+        private void UpdateHousingDisplay()
+        {
+            if (housingCapacityText != null && mGameDataModel != null && mSurvivorModel != null)
+            {
+                int currentSurvivors = mSurvivorModel.GetAllSurvivors().Count;
+                // MaxHousingCapacity.Value 会从 mGameDataModel 获取最新的值
+                housingCapacityText.text = $"住房: {currentSurvivors}/{mGameDataModel.MaxHousingCapacity.Value}";
             }
         }
+
 
         private void UpdateDayText(int day)
         {
@@ -84,33 +113,27 @@ namespace YourGameNamespace.UI
             int currentDay = mGameDataModel.CurrentDay.Value;
             float currentHealth = mGameDataModel.BaseHealth.Value;
 
-            string timeStr = ""; // Default to empty or a placeholder if DayNightSystem interaction is removed
+            string timeStr = "";
 
             if (currentHealth <= 0)
             {
-                timeStr = "游戏结束";
-                // Ensure final state text, though Register callbacks might have updated them
+                timeStr = "游戏结束"; // 本地化: "游戏结束"
                 if (dayText != null) dayText.text = "天数: " + currentDay;
                 if (baseHealthText != null) baseHealthText.text = "基地生命: 0";
             }
-            else if (currentDay > 100)
+            else if (currentDay > 100) // 假设100天为胜利条件
             {
-                timeStr = "游戏胜利!";
+                timeStr = "游戏胜利!"; // 本地化: "游戏胜利!"
             }
-            // else // Normal game time display logic (if needed from DayNightSystem)
-            // {
-            //     // IDayNightSystem dayNightSystem = this.GetSystem<IDayNightSystem>(); // Example if DayNightSystem is needed
-            //     // if (dayNightSystem != null)
-            //     // {
-            //     //     // Placeholder for time display logic, e.g., from a BindableProperty in DayNightSystem
-            //     //     // timeStr = $"时间: {dayNightSystem.GetTimeOfDayNormalized() * 100:F0}%";
-            //     // }
+            // 如果游戏正常进行，timeText可以考虑显示其他信息，或保持为空
+            // 例如，如果 DayNightSystem 存在并提供时间百分比:
+            // else {
+            //      IDayNightSystem dns = this.GetSystem<IDayNightSystem>();
+            //      if (dns != null) timeStr = $"时间: {dns.TimeOfDayNormalized.Value * 100:F0}%";
             // }
             timeText.text = timeStr;
         }
         
-        
-        // Update() method is removed as UI updates are driven by BindableProperty callbacks
         public IArchitecture GetArchitecture()
         {
             return RegisterManager.Interface;
