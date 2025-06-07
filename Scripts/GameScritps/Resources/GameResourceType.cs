@@ -8,6 +8,9 @@ namespace YourGameNamespace
         Ammo,           // 弹药：用于防御和战斗
         Medicine,       // 药品：用于治疗受伤或生病的幸存者
         ResearchPoints, // 研究点：用于解锁新的技术
-        ElectronicParts // 电子零件：高级制作和某些研究的材料 (已添加)
+        ElectronicParts, // 电子零件：高级制作和某些研究的材料 (已添加)
+
+        Wood,           // 木材：基础建材和某些制作的原料
+        Scrap           // 废料：基础建材和某些制作的原料
     }
 }

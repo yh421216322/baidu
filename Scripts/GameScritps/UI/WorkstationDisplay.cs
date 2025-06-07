@@ -73,12 +73,37 @@ namespace YourGameNamespace.UI
             // 或者在管理面板关闭时强制刷新。为简化，这里假设存在一个这样的事件。
             // 你可能需要创建 YourGameNamespace.Commands.WorkstationAssignmentsChangedEvent
             // this.RegisterEvent<WorkstationAssignmentsChangedEvent>(e => RefreshWorkstationListForSpecific(e.WorkstationId)).UnRegisterWhenGameObjectDestroyed(this.gameObject);
-            // 简单的刷新方式：
-            this.RegisterEvent<YourGameNamespace.Commands.AssignSurvivorToWorkstationCommand.CompletedEvent>(e => RefreshWorkstationList());
-            this.RegisterEvent<YourGameNamespace.Commands.UnassignSurvivorFromWorkstationCommand.CompletedEvent>(e => RefreshWorkstationList());
-
+            // 监听新的结果事件
+            this.RegisterEvent<AssignSurvivorToWorkstationResultEvent>(OnSurvivorAssignedResult)
+                .UnRegisterWhenGameObjectDestroyed(gameObject);
+            this.RegisterEvent<UnassignSurvivorFromWorkstationResultEvent>(OnSurvivorUnassignedResult)
+                .UnRegisterWhenGameObjectDestroyed(gameObject);
 
             RefreshWorkstationList(); // Initial refresh
+        }
+
+        private void OnSurvivorAssignedResult(AssignSurvivorToWorkstationResultEvent e)
+        {
+            if (e.Success)
+            {
+                Debug.Log($"[WorkstationDisplay] 幸存者 {e.SurvivorId} 已成功分配到工作站 {e.WorkstationId}。刷新列表。");
+                RefreshWorkstationList();
+            }
+            else
+            {
+                Debug.LogWarning($"[WorkstationDisplay] 分配幸存者 {e.SurvivorId} 到工作站 {e.WorkstationId} 失败。原因: {e.FailureReasonKey}");
+                // TODO: Optionally show a UI message to the player based on FailureReasonKey
+            }
+        }
+
+        private void OnSurvivorUnassignedResult(UnassignSurvivorFromWorkstationResultEvent e)
+        {
+            if (e.Success)
+            {
+                Debug.Log($"[WorkstationDisplay] 幸存者 {e.SurvivorId} 已成功从工作站 {e.WorkstationId} 解除分配。刷新列表。");
+                RefreshWorkstationList();
+            }
+            // else case for Unassign is less common for failure unless system error, but can be handled if needed.
         }
 
         // 可选：如果只想刷新特定工作站的显示而不是整个列表

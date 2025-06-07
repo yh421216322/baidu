@@ -232,6 +232,15 @@ namespace YourGameNamespace.Events
         public bool Success;                     // 是否成功
         public string FailureReasonKey;          // 可选，用于UI本地化错误信息 (例如 "INSUFFICIENT_RESOURCES")
     }
+
+    /// <summary>
+    /// 当尝试从工作站解除分配幸存者操作完成后的事件
+    /// </summary>
+    public struct UnassignSurvivorFromWorkstationResultEvent {
+        public Guid SurvivorId;     // 相关幸存者的ID
+        public Guid WorkstationId;  // 相关工作站的ID
+        public bool Success;        // 操作是否成功 (通常为true，除非发生意外错误)
+    }
 }
 // 确保文件顶部有:
 // using YourGameNamespace.Enemies;
