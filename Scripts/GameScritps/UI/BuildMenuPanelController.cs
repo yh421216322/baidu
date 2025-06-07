@@ -26,7 +26,7 @@ namespace YourGameNamespace.UI
         private ResourceModel mResourceModel;   // Changed from IResourceModel
 
         private List<GameObject> mInstantiatedItems = new List<GameObject>();
-        private List<IUnRegister> mEventUnregisters = new List<IUnRegister>();
+        // private List<IUnRegister> mEventUnregisters = new List<IUnRegister>(); // Removed
 
 
         public IArchitecture GetArchitecture() => RegisterManager.Interface;
@@ -59,13 +59,13 @@ namespace YourGameNamespace.UI
             }
 
             // 清理旧的事件监听器并重新注册
-            foreach(var unReg in mEventUnregisters) unReg.UnRegister();
-            mEventUnregisters.Clear();
+            // foreach(var unReg in mEventUnregisters) unReg.UnRegister(); // Removed
+            // mEventUnregisters.Clear(); // Removed
 
             this.RegisterEvent<BuildBuildingResultEvent>(OnBuildResult)
-                .UnRegisterWhenGameObjectDestroyed(gameObject).AddTo(mEventUnregisters); // AddTo 用于手动管理反注册列表
+                .UnRegisterWhenGameObjectDestroyed(gameObject);
             this.RegisterEvent<ResourceChangedEvent>(OnResourcesChanged)
-                .UnRegisterWhenGameObjectDestroyed(gameObject).AddTo(mEventUnregisters);
+                .UnRegisterWhenGameObjectDestroyed(gameObject);
 
             PopulateBuildMenu(); // 填充菜单项
 
@@ -104,7 +104,7 @@ namespace YourGameNamespace.UI
                     UpdateButtonInteractability(itemUI, costs);
                 } else {
                     Debug.LogError($"BuildMenuPanelController: 预制件 {buildMenuItemPrefabPath} 上缺少 BuildMenuItemUI 脚本。");
-                    mObjectPoolSystem.Recycle(itemGO);
+                    mObjectPoolSystem.Unspawn(itemGO); // Changed from Recycle
                     mInstantiatedItems.Remove(itemGO);
                 }
             }
@@ -189,7 +189,7 @@ namespace YourGameNamespace.UI
 
         private void ClearInstantiatedItems() {
             if(mObjectPoolSystem == null) return;
-            foreach (var item in mInstantiatedItems) { if(item != null) mObjectPoolSystem.Recycle(item); } // Check item null
+            foreach (var item in mInstantiatedItems) { if(item != null) mObjectPoolSystem.Unspawn(item); } // Changed from Recycle
             mInstantiatedItems.Clear();
         }
 
@@ -199,19 +199,20 @@ namespace YourGameNamespace.UI
         public void ClosePanel() {
             // DOTween animation for panel disappearing (conceptual)
             // transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack).OnComplete(() => {
-                if (mObjectPoolSystem != null) { mObjectPoolSystem.Recycle(this.gameObject); } // OnRecycled will be called
+                if (mObjectPoolSystem != null) { mObjectPoolSystem.Unspawn(this.gameObject); } // Changed from Recycle, OnRecycled will be called by pool system if it implements IPoolable correctly
                 else { gameObject.SetActive(false); OnRecycled(); } // Manual call if no pool
             // });
         }
 
         // --- IPoolable Implementation ---
-        public void OnRecycled() {
+        public void OnRecycled() { // This method is called by the ObjectPoolSystem when Unspawn is called if the GO has IPoolable
             // Debug.Log("BuildMenuPanelController OnRecycled called."); // Chinese Log
             ClearInstantiatedItems();
-            foreach(var unReg in mEventUnregisters) unReg.UnRegister();
-            mEventUnregisters.Clear();
+            // No need to manage mEventUnregisters as UnRegisterWhenGameObjectDestroyed handles it
+            // foreach(var unReg in mEventUnregisters) unReg.UnRegister(); // Removed
+            // mEventUnregisters.Clear(); // Removed
             gameObject.SetActive(false);
         }
-        public bool IsRecycled { get; set; }
+        public bool IsRecycled { get; set; } // This property is set by the ObjectPoolSystem
     }
 }

@@ -86,7 +86,7 @@ namespace YourGameNamespace.UI
             this.RegisterEvent<Model_TechnologyStatusUpdatedEvent>(e => RefreshTechnologyList()).UnRegisterWhenGameObjectDestroyed(this.gameObject);
             this.RegisterEvent<TechnologyCompletedEvent>(e => RefreshTechnologyList()).UnRegisterWhenGameObjectDestroyed(gameObject); // Added from original GDD
             this.RegisterEvent<ResourceChangedEvent>(e => {
-                 if(e.ResourceType == GameResourceType.ResearchPoints) RefreshTechnologyList();
+                 if(e.Type == GameResourceType.ResearchPoints) RefreshTechnologyList(); // Changed e.ResourceType to e.Type
             }).UnRegisterWhenGameObjectDestroyed(gameObject);
 
 
@@ -176,8 +176,8 @@ namespace YourGameNamespace.UI
 
             if (currentTech != null)
             {
-                currentResearchNameText.text = $"当前研究：{currentTech.Name.Value}";
-                currentResearchDescriptionText.text = currentTech.Description.Value;
+                currentResearchNameText.text = $"当前研究：{currentTech.Name}"; // Removed .Value
+                currentResearchDescriptionText.text = currentTech.Description; // Removed .Value
                 if (researchProgressSlider != null) researchProgressSlider.gameObject.SetActive(true);
                 if (researchProgressPercentageText != null) researchProgressPercentageText.gameObject.SetActive(true);
             }
@@ -231,7 +231,7 @@ namespace YourGameNamespace.UI
                 return;
             }
             if (mResearchSystem.IsResearching()) {
-                 Debug.LogWarning($"ResearchDisplay: 其他研究正在进行中 ({mResearchSystem.GetCurrentResearch()?.Name.Value})，无法开始 {techId}。");
+                 Debug.LogWarning($"ResearchDisplay: 其他研究正在进行中 ({mResearchSystem.GetCurrentResearch()?.Name})，无法开始 {techId}。"); // Removed .Value
                  // this.SendCommand(new ShowMessageCommand("已有其他研究正在进行中。"));
                  RefreshTechnologyList();
                  return;
@@ -276,7 +276,7 @@ namespace YourGameNamespace.UI
             var panelController = mCurrentConfirmationPanel.GetComponent<ResearchConfirmationPanelController>();
             if (panelController != null)
             {
-                panelController.Setup(techToResearch,
+                panelController.InitAndShow(techToResearch, // Changed Setup to InitAndShow
                 confirmedTechId => {
                     this.SendCommand(new StartResearchCommand(confirmedTechId));
                 },
@@ -287,7 +287,7 @@ namespace YourGameNamespace.UI
             else
             {
                 Debug.LogError($"ResearchDisplay: 确认面板预制件 {researchConfirmationPanelPrefabPath} 上缺少 ResearchConfirmationPanelController 脚本。直接开始研究作为后备。");
-                _objectPoolSystem.Recycle(mCurrentConfirmationPanel);
+                _objectPoolSystem.Unspawn(mCurrentConfirmationPanel); // Changed from Recycle
                 mCurrentConfirmationPanel = null;
                 this.SendCommand(new StartResearchCommand(techId)); // Fallback
             }
@@ -299,7 +299,7 @@ namespace YourGameNamespace.UI
             // Recycle items if they were managed in a list by this script (current code doesn't maintain such list here)
             if (mCurrentConfirmationPanel != null && _objectPoolSystem != null)
             {
-                _objectPoolSystem.Recycle(mCurrentConfirmationPanel);
+                _objectPoolSystem.Unspawn(mCurrentConfirmationPanel); // Changed from Recycle
                 mCurrentConfirmationPanel = null;
             }
         }

@@ -109,8 +109,9 @@ namespace YourGameNamespace.UI
 
                 if (isAssignedToCurrentWorkstation)
                 {
-                    GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefab.name, assignedSurvivorsContainer); // Assuming prefab is in Resources or pool is pre-warmed
+                    GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefab.name); // Corrected: Spawn with name only
                     if (itemGO == null) { Debug.LogError("Failed to spawn survivorItemPrefab for assigned list"); continue; }
+                    itemGO.transform.SetParent(assignedSurvivorsContainer, false); // Set parent after spawn
 
                     var itemUI = itemGO.GetComponent<WorkstationAssignSurvivorItemUI>();
                     if (itemUI != null)
@@ -122,8 +123,9 @@ namespace YourGameNamespace.UI
                 // Only show in available list if survivor is Idle AND there's space
                 else if (survivor.Status.Value == SurvivorStatus.Idle && canAssignMore)
                 {
-                    GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefab.name, availableSurvivorsContainer);
+                    GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefab.name); // Corrected: Spawn with name only
                      if (itemGO == null) { Debug.LogError("Failed to spawn survivorItemPrefab for available list"); continue; }
+                    itemGO.transform.SetParent(availableSurvivorsContainer, false); // Set parent after spawn
 
                     var itemUI = itemGO.GetComponent<WorkstationAssignSurvivorItemUI>();
                     if (itemUI != null)
@@ -140,7 +142,7 @@ namespace YourGameNamespace.UI
             if (mObjectPoolSystem == null) return;
             foreach (GameObject item in itemsList)
             {
-                if(item != null) mObjectPoolSystem.Recycle(item);
+                if(item != null) mObjectPoolSystem.Unspawn(item); // Changed from Recycle
             }
             itemsList.Clear();
         }
@@ -166,7 +168,7 @@ namespace YourGameNamespace.UI
         {
             // TODO: 可以添加关闭动画
             if (mObjectPoolSystem != null) {
-                 mObjectPoolSystem.Recycle(gameObject); // This will call OnRecycled
+                 mObjectPoolSystem.Unspawn(gameObject); // Changed from Recycle
             } else {
                 gameObject.SetActive(false); // Fallback
                 OnRecycled(); // Manual call if no pool
@@ -176,7 +178,7 @@ namespace YourGameNamespace.UI
         private void AttemptClosePanel() // Used when setup fails
         {
             if (mObjectPoolSystem != null && IsRecycled == false) { // Check IsRecycled if available
-                 mObjectPoolSystem.Recycle(gameObject);
+                 mObjectPoolSystem.Unspawn(gameObject); // Changed from Recycle
             } else if (gameObject.activeSelf) {
                 gameObject.SetActive(false);
             }

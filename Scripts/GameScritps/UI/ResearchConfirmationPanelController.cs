@@ -61,14 +61,14 @@ namespace YourGameNamespace.UI
 
             if (techNameText != null)
             {
-                techNameText.text = $"科技名称: {mCurrentTechnology.Name.Value}"; // 假设 Name 是 BindableProperty<string>
+                techNameText.text = $"科技名称: {mCurrentTechnology.Name}"; // Removed .Value
             }
             else Debug.LogError("ResearchConfirmationPanelController: techNameText (科技名称文本) 未分配!");
 
 
             if (techDescriptionText != null)
             {
-                techDescriptionText.text = $"描述: {mCurrentTechnology.Description.Value}"; // 假设 Description 是 BindableProperty<string>
+                techDescriptionText.text = $"描述: {mCurrentTechnology.Description}"; // Removed .Value
             }
             else Debug.LogError("ResearchConfirmationPanelController: techDescriptionText (科技描述文本) 未分配!");
 
@@ -109,7 +109,7 @@ namespace YourGameNamespace.UI
             // TODO: 可以添加关闭面板的动画
             if (mObjectPoolSystem != null)
             {
-                mObjectPoolSystem.Recycle(gameObject); // This will call OnRecycled
+                mObjectPoolSystem.Unspawn(gameObject); // Changed from Recycle
             }
             else
             {

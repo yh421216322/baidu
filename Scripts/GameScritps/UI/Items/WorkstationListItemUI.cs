@@ -18,7 +18,7 @@ namespace YourGameNamespace.UI
 
         private Workstation mWorkstation;
         private WorkstationDisplay mParentDisplay;
-        private List<IUnRegister> mUnregisters = new List<IUnRegister>();
+        // private List<IUnRegister> mUnregisters = new List<IUnRegister>(); // Removed
 
         private void Awake()
         {
@@ -54,12 +54,10 @@ namespace YourGameNamespace.UI
             if (stationTypeText) stationTypeText.text = $"类型: {GetLocalizedWorkstationType(mWorkstation.Type)}";
 
             mWorkstation.AssignedSurvivorCount.RegisterWithInitValue(UpdateAssignedSurvivorsUI)
-                .UnRegisterWhenGameObjectDestroyed(this.gameObject)
-                .AddTo(mUnregisters);
+                .UnRegisterWhenGameObjectDestroyed(this.gameObject);
 
             mWorkstation.ProductionProgress.RegisterWithInitValue(UpdateProductionProgressUI)
-                .UnRegisterWhenGameObjectDestroyed(this.gameObject)
-                .AddTo(mUnregisters);
+                .UnRegisterWhenGameObjectDestroyed(this.gameObject);
 
             if (manageButton != null)
             {
@@ -117,23 +115,38 @@ namespace YourGameNamespace.UI
 
         private void ClearBindings()
         {
-            foreach (var unregister in mUnregisters)
-            {
-                unregister.UnRegister();
-            }
-            mUnregisters.Clear();
+            // foreach (var unregister in mUnregisters) // Removed
+            // { // Removed
+            //     unregister.UnRegister(); // Removed
+            // } // Removed
+            // mUnregisters.Clear(); // Removed
+            // Existing listeners on mWorkstation properties are handled by UnRegisterWhenGameObjectDestroyed.
+            // Button listeners are handled by direct RemoveAllListeners if needed (e.g. in OnRecycled or before re-adding).
         }
 
         public void OnRecycled()
         {
-            ClearBindings();
+            // ClearBindings(); // Call to ClearBindings might be redundant if it only handled mUnregisters.
+            // Specific cleanup for pooled objects:
+            if (manageButton != null) manageButton.onClick.RemoveAllListeners();
+            // Reset texts or other UI states if necessary
+            if (stationTypeText) stationTypeText.text = "";
+            if (assignedSurvivorsText) assignedSurvivorsText.text = "";
+            if (productionProgressText) productionProgressText.text = "";
+            if (productionProgressBar) productionProgressBar.value = 0;
+
             gameObject.SetActive(false);
         }
         public bool IsRecycled { get; set; }
 
         void OnDestroy()
         {
-            ClearBindings();
+            // ClearBindings(); // UnRegisterWhenGameObjectDestroyed handles QF event/BindableProperty unregistrations.
+            // Manual Unity UI event cleanup if not handled by OnRecycled (e.g., if not pooled but destroyed)
+             if (manageButton != null && !IsRecycled) // Avoid double removal if OnRecycled was called by pool
+            {
+                 manageButton.onClick.RemoveAllListeners();
+            }
         }
     }
 }

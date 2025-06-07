@@ -9,6 +9,7 @@ using YourGameNamespace.Survivors; // 需要 SurvivorModel
 using YourGameNamespace.Events; // For Model_WorkstationRegisteredEvent
 using System.Linq; // For potential Linq operations
 using MyGameNamespace; // For IObjectPoolSystem, assuming it's in MyGameNamespace
+using YourGameNamespace.Commands; // Added to resolve CS0246 for command types
 
 namespace YourGameNamespace.UI
 {
@@ -214,7 +215,7 @@ namespace YourGameNamespace.UI
             var panelController = mCurrentManagementPanel.GetComponent<WorkstationManagementPanelController>();
             if (panelController != null)
             {
-                panelController.Setup(workstationId, mWorkstationModel, mSurvivorModel);
+                panelController.InitAndShow(workstationId, mWorkstationModel, mSurvivorModel); // Changed Setup to InitAndShow
             }
             else
             {

@@ -59,8 +59,9 @@ namespace YourGameNamespace.Workstations
             InitializeBuildCosts();
 
             // 注册监听建筑建造完成事件
-            this.RegisterEvent<Model_BuildingConstructedEvent>(OnBuildingConstructed)
-                .UnRegisterWhenDisposed(this); // Corrected unregistration for AbstractSystem
+            this.RegisterEvent<Model_BuildingConstructedEvent>(OnBuildingConstructed);
+            // For AbstractSystem, QFramework's architecture often handles unregistration on dispose.
+            // If manual control is ever needed, it would be in an OnDestroy/Dispose equivalent.
         }
 
         private void InitializeBuildCosts()
