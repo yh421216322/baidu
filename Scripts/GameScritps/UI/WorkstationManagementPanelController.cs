@@ -13,7 +13,7 @@ using MyGameNamespace; // Assuming RegisterManager might be here, or it's global
 
 namespace YourGameNamespace.UI
 {
-    public class WorkstationManagementPanelController : MonoBehaviour, IController, IPoolable // Added IPoolable
+    public class WorkstationManagementPanelController : MonoBehaviour, IController // Removed IPoolable
     {
         // UI 引用
         public TextMeshProUGUI selectedWorkstationNameText; // 已在之前步骤中确认为TextMeshPro类型

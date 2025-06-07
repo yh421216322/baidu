@@ -10,7 +10,7 @@ using QFramework; // Added for IPoolable
 
 namespace YourGameNamespace.UI
 {
-    public class BuildMenuItemUI : MonoBehaviour, IPoolable // Implements IPoolable
+    public class BuildMenuItemUI : MonoBehaviour // Removed IPoolable
     {
         [Header("UI 引用")] // UI References (in Chinese)
         public TextMeshProUGUI buildingNameText; // 建筑名称文本

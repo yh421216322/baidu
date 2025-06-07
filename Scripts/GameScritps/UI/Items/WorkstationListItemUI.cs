@@ -8,7 +8,7 @@ using System.Collections.Generic; // For List<IUnRegister>
 
 namespace YourGameNamespace.UI
 {
-    public class WorkstationListItemUI : MonoBehaviour, IPoolable // Added IPoolable
+    public class WorkstationListItemUI : MonoBehaviour // Removed IPoolable
     {
         public TextMeshProUGUI stationTypeText; // Changed to TextMeshProUGUI
         public TextMeshProUGUI assignedSurvivorsText; // Changed to TextMeshProUGUI

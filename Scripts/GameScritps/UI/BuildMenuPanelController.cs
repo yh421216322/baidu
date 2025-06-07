@@ -14,7 +14,7 @@ using MyGameNamespace; // For IObjectPoolSystem
 
 namespace YourGameNamespace.UI
 {
-    public class BuildMenuPanelController : MonoBehaviour, IController, IPoolable
+    public class BuildMenuPanelController : MonoBehaviour, IController // Removed IPoolable from here
     {
         [Header("UI 引用")] // UI References (in Chinese)
         public Transform buildMenuItemsContainer; // 建造菜单项容器

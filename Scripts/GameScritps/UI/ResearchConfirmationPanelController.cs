@@ -10,7 +10,7 @@ using MyGameNamespace; // Assuming RegisterManager and ObjectPoolSystem might be
 
 namespace YourGameNamespace.UI
 {
-    public class ResearchConfirmationPanelController : MonoBehaviour, IController, IPoolable // Added IPoolable
+    public class ResearchConfirmationPanelController : MonoBehaviour, IController // Removed IPoolable
     {
         public TextMeshProUGUI techNameText; // 名称文本
         public TextMeshProUGUI techDescriptionText; // 描述文本
