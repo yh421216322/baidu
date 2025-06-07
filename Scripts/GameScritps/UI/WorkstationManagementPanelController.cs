@@ -1,7 +1,7 @@
 // WorkstationManagementPanelController.cs
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine.UI; // Ensure this is present for Text, Button
+// using TMPro; // Removed
 using QFramework;
 using YourGameNamespace.Workstations;
 using YourGameNamespace.Survivors;
@@ -16,7 +16,7 @@ namespace YourGameNamespace.UI
     public class WorkstationManagementPanelController : MonoBehaviour, IController // Removed IPoolable
     {
         // UI 引用
-        public TextMeshProUGUI selectedWorkstationNameText; // 已在之前步骤中确认为TextMeshPro类型
+        public Text selectedWorkstationNameText; // Changed to Text
         public Transform assignedSurvivorsContainer;  // 已分配幸存者列表容器
         public Transform availableSurvivorsContainer; // 可分配幸存者列表容器
         public GameObject survivorItemPrefab;         // 幸存者列表项预制件 (WorkstationAssignSurvivorItem_PF)

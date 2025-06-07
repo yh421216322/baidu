@@ -1,7 +1,7 @@
 // ResearchConfirmationPanelController.cs
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine.UI; // Ensure this is present for Text, Button
+// using TMPro; // Removed
 using QFramework;
 using YourGameNamespace.Research; // For Technology
 using System;
@@ -12,9 +12,9 @@ namespace YourGameNamespace.UI
 {
     public class ResearchConfirmationPanelController : MonoBehaviour, IController // Removed IPoolable
     {
-        public TextMeshProUGUI techNameText; // 名称文本
-        public TextMeshProUGUI techDescriptionText; // 描述文本
-        public TextMeshProUGUI techCostText; // 成本文本
+        public Text techNameText; // Changed to Text
+        public Text techDescriptionText; // Changed to Text
+        public Text techCostText; // Changed to Text
         public Button confirmButton; // 确认按钮
         public Button cancelButton; // 取消按钮
 

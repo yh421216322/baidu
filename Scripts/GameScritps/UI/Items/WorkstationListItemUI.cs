@@ -1,7 +1,7 @@
 using QFramework;
-using TMPro; // Ensure this is used
+// using TMPro; // Removed
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UI; // Ensure this is present for Text, Slider, Button
 using YourGameNamespace.Workstations;
 using System;
 using System.Collections.Generic; // For List<IUnRegister>
@@ -10,10 +10,10 @@ namespace YourGameNamespace.UI
 {
     public class WorkstationListItemUI : MonoBehaviour // Removed IPoolable
     {
-        public TextMeshProUGUI stationTypeText; // Changed to TextMeshProUGUI
-        public TextMeshProUGUI assignedSurvivorsText; // Changed to TextMeshProUGUI
+        public Text stationTypeText; // Changed to Text
+        public Text assignedSurvivorsText; // Changed to Text
         public Slider productionProgressBar;
-        public TextMeshProUGUI productionProgressText; // Changed to TextMeshProUGUI
+        public Text productionProgressText; // Changed to Text
         public Button manageButton;
 
         private Workstation mWorkstation;
@@ -22,10 +22,10 @@ namespace YourGameNamespace.UI
 
         private void Awake()
         {
-            stationTypeText = stationTypeText ?? transform.Find("StationTypeText")?.GetComponent<TextMeshProUGUI>();
-            assignedSurvivorsText = assignedSurvivorsText ?? transform.Find("AssignedSurvivorsText")?.GetComponent<TextMeshProUGUI>();
+            stationTypeText = stationTypeText ?? transform.Find("StationTypeText")?.GetComponent<Text>();
+            assignedSurvivorsText = assignedSurvivorsText ?? transform.Find("AssignedSurvivorsText")?.GetComponent<Text>();
             productionProgressBar = productionProgressBar ?? transform.Find("ProductionProgressBar")?.GetComponent<Slider>();
-            productionProgressText = productionProgressText ?? transform.Find("ProductionProgressText")?.GetComponent<TextMeshProUGUI>();
+            productionProgressText = productionProgressText ?? transform.Find("ProductionProgressText")?.GetComponent<Text>();
             manageButton = manageButton ?? transform.Find("ManageButton")?.GetComponent<Button>();
 
             if (stationTypeText == null) Debug.LogError("WorkstationListItemUI: stationTypeText 未找到或未链接!");

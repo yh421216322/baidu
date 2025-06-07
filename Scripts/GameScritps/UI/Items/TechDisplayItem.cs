@@ -6,18 +6,18 @@ using YourGameNamespace.Resources;
 using QFramework;
 using System.Collections.Generic;
 using System.Linq;
-using TMPro; // Added TMPro
+// using TMPro; // Removed TMPro
 
 namespace YourGameNamespace.UI
 {
     public class TechDisplayItem : MonoBehaviour
     {
-        public TextMeshProUGUI nameText;
-        public TextMeshProUGUI descriptionText;
-        public TextMeshProUGUI statusText;
+        public Text nameText; // Changed to Text
+        public Text descriptionText; // Changed to Text
+        public Text statusText; // Changed to Text
         public Button researchButton;
         public Slider progressBar;
-        public TextMeshProUGUI feedbackText;
+        public Text feedbackText; // Changed to Text
 
         private string mTechId;
         private Technology mTechnology;
@@ -30,12 +30,12 @@ namespace YourGameNamespace.UI
 
         private void Awake()
         {
-            nameText = nameText ?? transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
-            descriptionText = descriptionText ?? transform.Find("DescriptionText")?.GetComponent<TextMeshProUGUI>();
-            statusText = statusText ?? transform.Find("StatusText")?.GetComponent<TextMeshProUGUI>();
+            nameText = nameText ?? transform.Find("NameText")?.GetComponent<Text>();
+            descriptionText = descriptionText ?? transform.Find("DescriptionText")?.GetComponent<Text>();
+            statusText = statusText ?? transform.Find("StatusText")?.GetComponent<Text>();
             researchButton = researchButton ?? transform.Find("ResearchButton")?.GetComponent<Button>();
             progressBar = progressBar ?? transform.Find("ProgressBar")?.GetComponent<Slider>();
-            feedbackText = feedbackText ?? transform.Find("FeedbackText")?.GetComponent<TextMeshProUGUI>();
+            feedbackText = feedbackText ?? transform.Find("FeedbackText")?.GetComponent<Text>();
 
             if (nameText == null) Debug.LogError("TechDisplayItem: NameText not found or linked.");
             if (descriptionText == null) Debug.LogError("TechDisplayItem: DescriptionText not found or linked.");
@@ -43,7 +43,7 @@ namespace YourGameNamespace.UI
             if (researchButton == null) Debug.LogError("TechDisplayItem: ResearchButton not found or linked.");
             // ProgressBar and FeedbackText can be optional, so warnings are fine.
             if (progressBar == null) Debug.LogWarning("TechDisplayItem: ProgressBar (Slider) not found or linked.");
-            if (feedbackText == null) Debug.LogWarning("TechDisplayItem: FeedbackText (TextMeshProUGUI) not found or linked.");
+            if (feedbackText == null) Debug.LogWarning("TechDisplayItem: FeedbackText (Text) not found or linked.");
         }
 
         public void Setup(Technology technology, Action<string> researchRequestCallback, bool isAnotherResearchActive, IResearchSystem researchSystem, ResourceModel resourceModel)
@@ -92,7 +92,7 @@ namespace YourGameNamespace.UI
             bool canAfford = mResourceModelRef.HasEnough(GameResourceType.ResearchPoints, mTechnology.ResearchPointCost);
 
             // Default button state
-            TextMeshProUGUI buttonText = researchButton?.GetComponentInChildren<TextMeshProUGUI>();
+            Text buttonText = researchButton?.GetComponentInChildren<Text>(); // Changed to Text
             if(researchButton) researchButton.gameObject.SetActive(true); // Default to visible, then hide if needed
             if(researchButton) researchButton.interactable = false; // Default to not interactable
             if(buttonText) buttonText.text = "研究"; // Default text

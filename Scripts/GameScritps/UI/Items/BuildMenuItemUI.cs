@@ -1,7 +1,7 @@
 // 文件路径: Scripts/GameScritps/UI/Items/BuildMenuItemUI.cs
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine.UI; // Ensure this is present for Text, Image, Button
+// using TMPro; // Removed
 using System;
 using System.Collections.Generic;
 using YourGameNamespace.Buildings;
@@ -13,9 +13,9 @@ namespace YourGameNamespace.UI
     public class BuildMenuItemUI : MonoBehaviour // Removed IPoolable
     {
         [Header("UI 引用")] // UI References (in Chinese)
-        public TextMeshProUGUI buildingNameText; // 建筑名称文本
-        public TextMeshProUGUI buildingDescriptionText; // 建筑描述文本
-        public TextMeshProUGUI costText; // 成本文本
+        public Text buildingNameText; // Changed to Text
+        public Text buildingDescriptionText; // Changed to Text
+        public Text costText; // Changed to Text
         public Image buildingIcon; // 建筑图标 (可选)
         public Button buildButton; // 建造按钮
 

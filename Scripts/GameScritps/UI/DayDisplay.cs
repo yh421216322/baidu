@@ -1,36 +1,37 @@
 using MyGameNamespace;
 using UnityEngine;
-using TMPro; // 使用 TextMeshPro
+using UnityEngine.UI; // For Text
+// using TMPro; // Removed TextMeshPro
 using QFramework;
 using YourGameNamespace.Framework;
-using YourGameNamespace.Survivors; // For ISurvivorModel
+using YourGameNamespace.Survivors;
 using YourGameNamespace.Events;   // For Model_SurvivorAddedEvent and potentially Model_SurvivorRemovedEvent
 
 namespace YourGameNamespace.UI
 {
     public class DayDisplay : MonoBehaviour, IController
     {
-        public TextMeshProUGUI dayText;
-        public TextMeshProUGUI timeText;
-        public TextMeshProUGUI baseHealthText;
-        public TextMeshProUGUI housingCapacityText; // 新增：住房容量文本
+        public Text dayText; // Changed to Text
+        public Text timeText; // Changed to Text
+        public Text baseHealthText; // Changed to Text
+        public Text housingCapacityText; // Changed to Text
 
-        private GameDataModel mGameDataModel; // Changed from IGameDataModel
-        private SurvivorModel mSurvivorModel; // Changed from ISurvivorModel
+        private GameDataModel mGameDataModel;
+        private SurvivorModel mSurvivorModel;
 
         private void Awake()
         {
-            // 更改为 GetComponent<TextMeshProUGUI>()
-            dayText = dayText ?? transform.Find("DayText")?.GetComponent<TextMeshProUGUI>();
-            timeText = timeText ?? transform.Find("TimeText")?.GetComponent<TextMeshProUGUI>();
-            baseHealthText = baseHealthText ?? transform.Find("BaseHealthText")?.GetComponent<TextMeshProUGUI>();
-            housingCapacityText = housingCapacityText ?? transform.Find("HousingCapacityText")?.GetComponent<TextMeshProUGUI>();
+            // 更改为 GetComponent<Text>()
+            dayText = dayText ?? transform.Find("DayText")?.GetComponent<Text>();
+            timeText = timeText ?? transform.Find("TimeText")?.GetComponent<Text>();
+            baseHealthText = baseHealthText ?? transform.Find("BaseHealthText")?.GetComponent<Text>();
+            housingCapacityText = housingCapacityText ?? transform.Find("HousingCapacityText")?.GetComponent<Text>();
 
 
-            if (dayText == null) Debug.LogError("DayDisplay: UI元素 'DayText' (TextMeshPro) 未能成功获取或链接。");
-            if (timeText == null) Debug.LogError("DayDisplay: UI元素 'TimeText' (TextMeshPro) 未能成功获取或链接。");
-            if (baseHealthText == null) Debug.LogError("DayDisplay: UI元素 'BaseHealthText' (TextMeshPro) 未能成功获取或链接。");
-            if (housingCapacityText == null) Debug.LogError("DayDisplay: UI元素 'HousingCapacityText' (TextMeshPro) 未能成功获取或链接!");
+            if (dayText == null) Debug.LogError("DayDisplay: UI元素 'DayText' (Text) 未能成功获取或链接。");
+            if (timeText == null) Debug.LogError("DayDisplay: UI元素 'TimeText' (Text) 未能成功获取或链接。");
+            if (baseHealthText == null) Debug.LogError("DayDisplay: UI元素 'BaseHealthText' (Text) 未能成功获取或链接。");
+            if (housingCapacityText == null) Debug.LogError("DayDisplay: UI元素 'HousingCapacityText' (Text) 未能成功获取或链接!");
         }
 
         void Start()
@@ -48,7 +49,7 @@ namespace YourGameNamespace.UI
             if (mSurvivorModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取幸存者数据模型 (SurvivorModel)！");
 
             if (dayText == null || timeText == null || baseHealthText == null || housingCapacityText == null)
-                Debug.LogError("日期显示 (DayDisplay)：一个或多个必要的UI TextMeshPro组件未在Unity检视面板中分配！");
+                Debug.LogError("日期显示 (DayDisplay)：一个或多个必要的UI Text组件未在Unity检视面板中分配！");
 
             if (mGameDataModel != null)
             {

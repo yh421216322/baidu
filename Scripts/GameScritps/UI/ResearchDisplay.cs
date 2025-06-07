@@ -9,19 +9,19 @@ using YourGameNamespace.Research;
 using YourGameNamespace.Events;
 using YourGameNamespace.Commands;
 using YourGameNamespace.Resources;
-using TMPro; // Added TMPro
+// using TMPro; // Removed TMPro
 
 namespace YourGameNamespace.UI
 {
     public class ResearchDisplay : MonoBehaviour, IController
     {
         [Header("Resource Texts")]
-        public TextMeshProUGUI foodText;
-        public TextMeshProUGUI powerText;
-        public TextMeshProUGUI ammoText;
-        public TextMeshProUGUI medicineText;
-        public TextMeshProUGUI researchPointsText;
-        public TextMeshProUGUI electronicPartsText;
+        public Text foodText; // Changed to Text
+        public Text powerText; // Changed to Text
+        public Text ammoText; // Changed to Text
+        public Text medicineText; // Changed to Text
+        public Text researchPointsText; // Changed to Text
+        public Text electronicPartsText; // Changed to Text
 
         [Header("Technology Lists")]
         public Transform availableTechUIParent;
@@ -32,10 +32,10 @@ namespace YourGameNamespace.UI
 
 
         [Header("Current Research Info")]
-        public TextMeshProUGUI currentResearchNameText;
-        public TextMeshProUGUI currentResearchDescriptionText;
+        public Text currentResearchNameText; // Changed to Text
+        public Text currentResearchDescriptionText; // Changed to Text
         public Slider researchProgressSlider;
-        public TextMeshProUGUI researchProgressPercentageText;
+        public Text researchProgressPercentageText; // Changed to Text
 
         private ResearchModel mResearchModel;
         private ResearchSystem mResearchSystem;
@@ -49,17 +49,17 @@ namespace YourGameNamespace.UI
         private void Awake()
         {
             // Assuming resource texts are directly assigned in Inspector. If not, use transform.Find.
-            // e.g. researchPointsText = researchPointsText ?? transform.Find("SomePanel/ResearchPointsText_TMP")?.GetComponent<TextMeshProUGUI>();
+            // e.g. researchPointsText = researchPointsText ?? transform.Find("SomePanel/ResearchPointsText_TMP")?.GetComponent<Text>();
 
-            currentResearchNameText = currentResearchNameText ?? transform.Find("CurrentResearchNameText_Element")?.GetComponent<TextMeshProUGUI>();
-            currentResearchDescriptionText = currentResearchDescriptionText ?? transform.Find("CurrentResearchDescriptionText_Element")?.GetComponent<TextMeshProUGUI>();
+            currentResearchNameText = currentResearchNameText ?? transform.Find("CurrentResearchNameText_Element")?.GetComponent<Text>();
+            currentResearchDescriptionText = currentResearchDescriptionText ?? transform.Find("CurrentResearchDescriptionText_Element")?.GetComponent<Text>();
             researchProgressSlider = researchProgressSlider ?? transform.Find("ResearchProgressSlider_Element")?.GetComponent<Slider>();
-            researchProgressPercentageText = researchProgressPercentageText ?? transform.Find("ResearchProgressPercentageText_Element")?.GetComponent<TextMeshProUGUI>();
+            researchProgressPercentageText = researchProgressPercentageText ?? transform.Find("ResearchProgressPercentageText_Element")?.GetComponent<Text>();
 
-            if (researchPointsText == null) Debug.LogError("ResearchDisplay: researchPointsText (TextMeshProUGUI) not found or linked.");
-            if (currentResearchNameText == null) Debug.LogError("ResearchDisplay: currentResearchNameText (TextMeshProUGUI) not found or linked.");
+            if (researchPointsText == null) Debug.LogError("ResearchDisplay: researchPointsText (Text) not found or linked.");
+            if (currentResearchNameText == null) Debug.LogError("ResearchDisplay: currentResearchNameText (Text) not found or linked.");
             if (researchProgressSlider == null) Debug.LogError("ResearchDisplay: researchProgressSlider (Slider) not found or linked.");
-            if (researchProgressPercentageText == null) Debug.LogError("ResearchDisplay: researchProgressPercentageText (TextMeshProUGUI) not found or linked.");
+            if (researchProgressPercentageText == null) Debug.LogError("ResearchDisplay: researchProgressPercentageText (Text) not found or linked.");
         }
 
         void Start()
