@@ -5,21 +5,16 @@ using YourGameNamespace.Events;
 using System;
 using YourGameNamespace.Research;
 using System.Collections.Generic;
-using MyGameNamespace; // Added for Dictionary
-// GameResourceType is in YourGameNamespace. Assuming YourGameNamespace is implicitly included or GameResourceType is defined in YourGameNamespace.
-// using YourGameNamespace; // If GameResourceType is directly in YourGameNamespace
+using MyGameNamespace; // Assuming RegisterManager and concrete models/systems might be here or global
+using YourGameNamespace.Buildings;
+using YourGameNamespace.Framework; // For concrete GameDataModel if not covered by MyGameNamespace
 
 namespace YourGameNamespace.Workstations
 {
-    // Interface definition moved here
-using YourGameNamespace.Buildings; // Required for BuildingSystem.IsWorkstationEquivalent and Model_BuildingConstructedEvent
-
-namespace YourGameNamespace.Workstations
-{
-    // Interface definition moved here
     public interface IWorkstationSystem : QFramework.QFISystem
     {
         void ApplyResearchEffectToWorkstation(WorkstationType targetStationType, TechnologyEffectType effectType, float effectValue, GameResourceType targetAffectedResource);
+
         /// <summary>
         /// 尝试建造或注册一个工作站。
         /// </summary>
@@ -28,12 +23,15 @@ namespace YourGameNamespace.Workstations
         /// <param name="associatedBuildingId">如果此工作站关联一个Building实体，则提供其ID。</param>
         /// <returns>如果成功则返回true，否则返回false。</returns>
         bool BuildWorkstation(WorkstationType type, bool costsAlreadyHandled = false, Guid? associatedBuildingId = null);
-        bool AssignSurvivorToWorkstation(Guid survivorId, Guid workstationId); // Changed to return bool
+
+        bool AssignSurvivorToWorkstation(Guid survivorId, Guid workstationId);
         void UnassignSurvivorFromWorkstation(Guid survivorId, Guid workstationId);
         void UpdateAllWorkstations(float deltaTime);
+        // List<(GameResourceType resource, int amount)> GetWorkstationBuildCosts(WorkstationType type); // Conceptual, for BuildingSystem
     }
 
-    public class WorkstationSystem : AbstractSystem, IController, IWorkstationSystem
+    // Removed IController as Systems are primarily for logic, not direct UI control.
+    public class WorkstationSystem : AbstractSystem, IWorkstationSystem
     {
         private WorkstationModel mWorkstationModel;
         private SurvivorModel mSurvivorModel;
@@ -42,7 +40,9 @@ namespace YourGameNamespace.Workstations
 
         private Dictionary<WorkstationType, (GameResourceType resource, int amount)> mWorkstationBuildCosts;
 
-        public IArchitecture GetArchitecture() => RegisterManager.Interface;
+        // GetArchitecture is implicitly provided by AbstractSystem if RegisterManager.Interface is set up as the architecture.
+        // If direct architecture access is needed and RegisterManager is the way:
+        // private IArchitecture architecture => RegisterManager.Interface;
 
         protected override void OnInit()
         {
@@ -53,9 +53,18 @@ namespace YourGameNamespace.Workstations
 
             if (mSurvivorManagerSystem == null)
             {
-                Debug.LogError("工作站系统 (WorkstationSystem)：未能获取幸存者管理系统 (ISurvivorManagerSystem)！");
+                Debug.LogError("工作站系统 (WorkstationSystem)：未能获取幸存者管理系统 (SurvivorManagerSystem)！");
             }
 
+            InitializeBuildCosts();
+
+            // 注册监听建筑建造完成事件
+            this.RegisterEvent<Model_BuildingConstructedEvent>(OnBuildingConstructed)
+                .UnRegisterWhenDisposed(this); // Corrected unregistration for AbstractSystem
+        }
+
+        private void InitializeBuildCosts()
+        {
             // Initialize build costs
             mWorkstationBuildCosts = new Dictionary<WorkstationType, (GameResourceType resource, int amount)>
             {
@@ -65,10 +74,6 @@ namespace YourGameNamespace.Workstations
                 { WorkstationType.Clinic, (GameResourceType.Food, 30) },
                 { WorkstationType.ResearchLab, (GameResourceType.ElectronicParts, 25) }
             };
-
-            // 注册监听建筑建造完成事件
-            this.RegisterEvent<Model_BuildingConstructedEvent>(OnBuildingConstructed)
-                .UnRegisterWhenGameObjectDestroyed(ArchBindable.gameObject); // Assuming ArchBindable gives a context or use a placeholder GO if system is not MonoBehaviour
         }
 
         private void OnBuildingConstructed(Model_BuildingConstructedEvent e)
@@ -76,7 +81,6 @@ namespace YourGameNamespace.Workstations
             if (BuildingSystem.IsWorkstationEquivalent(e.BuildingData.Type, out WorkstationType workstationType))
             {
                 Debug.Log($"工作站系统：检测到建筑 {e.BuildingData.Type} (ID: {e.BuildingData.Id}) 已建造，将创建对应的工作站实体 (成本已处理)。");
-                // 调用BuildWorkstation，并标记成本已被BuildingSystem处理，传递关联的Building ID
                 bool success = BuildWorkstation(workstationType, true, e.BuildingData.Id);
                 if (!success) {
                    Debug.LogError($"工作站系统：为建筑 {e.BuildingData.Type} (BuildingID: {e.BuildingData.Id}) 创建对应的工作站实体失败！这可能表示逻辑错误，因为成本已处理。");
@@ -84,11 +88,12 @@ namespace YourGameNamespace.Workstations
             }
         }
 
-
         public void ApplyResearchEffectToWorkstation(WorkstationType targetStationType, TechnologyEffectType effectType, float effectValue, GameResourceType targetAffectedResource)
         {
             bool effectApplied = false;
-            foreach (var station in this.GetModel<WorkstationModel>().GetAllWorkstations())
+            // Assuming GetModel<WorkstationModel>() is the correct way if mWorkstationModel is not directly used here for some reason
+            // However, it's a field, so it should be used.
+            foreach (var station in mWorkstationModel.GetAllWorkstations())
             {
                 if (station.Type == targetStationType)
                 {
@@ -114,12 +119,16 @@ namespace YourGameNamespace.Workstations
 
         public bool BuildWorkstation(WorkstationType type, bool costsAlreadyHandled = false, Guid? associatedBuildingId = null)
         {
-            if (!costsAlreadyHandled) // 仅当成本未被处理时，才检查和消耗资源
+            if (!costsAlreadyHandled)
             {
                 if (!mWorkstationBuildCosts.TryGetValue(type, out var cost))
                 {
                     Debug.LogError($"工作站类型 {type} 的建造成本未定义！");
                     return false;
+                }
+
+                if (mResourceModel == null) { // Added null check for mResourceModel
+                     Debug.LogError($"建造工作站 {type} 失败: ResourceModel 未初始化。"); return false;
                 }
 
                 if (!mResourceModel.HasEnough(cost.resource, cost.amount))
@@ -140,16 +149,22 @@ namespace YourGameNamespace.Workstations
                 Debug.Log($"为工作站 {type} (关联建筑ID: {associatedBuildingId?.ToString() ?? "N/A"}) 创建逻辑实体，成本已由建筑系统处理。");
             }
 
-            // 将 associatedBuildingId 传递给 Workstation 构造函数
+            if (mWorkstationModel == null) { // Added null check for mWorkstationModel
+                 Debug.LogError($"注册工作站 {type} 失败: WorkstationModel 未初始化。"); return false;
+            }
             Workstation newStation = new Workstation(type, associatedBuildingId);
             mWorkstationModel.AddWorkstation(newStation);
             Debug.Log($"已成功注册新的工作站逻辑实体：类型为 {type} (ID: {newStation.Id.ToString().Substring(0,4)}, 关联建筑ID: {newStation.AssociatedBuildingId?.ToString() ?? "无"})");
-            this.SendEvent(new WorkstationBuiltEvent(newStation.Type, newStation.Id)); // 事件依旧发送，表明一个可工作的站台已就绪
+            this.SendEvent(new WorkstationBuiltEvent(newStation.Type, newStation.Id));
             return true;
         }
 
         public bool AssignSurvivorToWorkstation(System.Guid survivorId, System.Guid workstationId)
         {
+            if (mSurvivorModel == null || mWorkstationModel == null || mSurvivorManagerSystem == null) {
+                Debug.LogError("AssignSurvivorToWorkstation 失败: 核心模型或系统未初始化。"); return false;
+            }
+
             var survivor = mSurvivorModel.GetSurvivorById(survivorId);
             var workstation = mWorkstationModel.GetWorkstationById(workstationId);
 
@@ -164,66 +179,60 @@ namespace YourGameNamespace.Workstations
                 return false;
             }
 
-            // 使用 .Value 访问 BindableProperty 的值
             if (survivor.Status.Value != SurvivorStatus.Idle)
             {
                 Debug.LogWarning($"未能将幸存者 {survivor.Name.Value} 分配到工作站 {workstation.Type}：该幸存者当前状态为 {survivor.Status.Value}，不是空闲状态。");
                 return false;
             }
 
-            // 处理幸存者已在其他工作站的情况
             if (survivor.WorkstationId.Value.HasValue && survivor.WorkstationId.Value.Value != workstationId)
             {
                 var previousWorkstation = mWorkstationModel.GetWorkstationById(survivor.WorkstationId.Value.Value);
                 if (previousWorkstation != null)
                 {
-                    previousWorkstation.UnassignSurvivor(survivorId); // This already updates AssignedSurvivorCount
+                    previousWorkstation.UnassignSurvivor(survivorId);
                     Debug.Log($"幸存者 {survivor.Name.Value} 在被分配到新工作站前，已从其先前所在的工作站 {previousWorkstation.Type} 取消分配。");
                 }
-                // ClearSurvivorWorkAssignment will set status to Idle, which is fine before re-assignment
                 mSurvivorManagerSystem.ClearSurvivorWorkAssignment(survivorId);
             }
 
-            // workstation.AssignSurvivor 现在返回 bool 并处理容量检查
             if (workstation.AssignSurvivor(survivorId))
             {
-                // 通过 SurvivorManagerSystem 来更新幸存者的工作状态和工作站ID
                 mSurvivorManagerSystem.AssignSurvivorToWork(survivorId, workstation.Id, workstation.Type);
                 Debug.Log($"幸存者 {survivor.Name.Value} 已成功分配到工作站 {workstation.Type}。");
-                // this.SendEvent(new WorkstationAssignmentsChangedEvent(workstationId)); // Send specific event (optional, covered by general result event now)
                 return true;
             }
             else
             {
-                // workstation.AssignSurvivor 内部会记录具体原因 (如已满或已分配)
-                // Debug.LogWarning($"未能将幸存者 {survivor.Name.Value} 分配到工作站 {workstation.Type}。工作站拒绝了此次分配。"); // Redundant if Workstation.AssignSurvivor logs
                 return false;
             }
         }
 
-        // 可选：添加一个显式的解除分配方法，如果需要从外部触发（例如UI按钮）
         public void UnassignSurvivorFromWorkstation(Guid survivorId, Guid workstationId)
         {
+             if (mSurvivorModel == null || mWorkstationModel == null || mSurvivorManagerSystem == null) {
+                Debug.LogError("UnassignSurvivorFromWorkstation 失败: 核心模型或系统未初始化。"); return;
+            }
             var survivor = mSurvivorModel.GetSurvivorById(survivorId);
             var workstation = mWorkstationModel.GetWorkstationById(workstationId);
 
             if (survivor != null && workstation != null)
             {
-                if (workstation.AssignedSurvivorIds.Contains(survivorId)) // 确保幸存者确实分配在此工作站
+                if (workstation.AssignedSurvivorIds.Contains(survivorId))
                 {
                     workstation.UnassignSurvivor(survivorId);
-                    mSurvivorManagerSystem.ClearSurvivorWorkAssignment(survivorId); // 更新幸存者状态
+                    mSurvivorManagerSystem.ClearSurvivorWorkAssignment(survivorId);
                     Debug.Log($"幸存者 {survivor.Name.Value} 已从工作站 {workstation.Type} 手动解除分配。");
                 }
                 else
                 {
                     Debug.LogWarning($"幸存者 {survivor.Name.Value} 并未分配到工作站 {workstation.Type}。");
                 }
+            } else {
+                 Debug.LogWarning($"解除分配失败: 未找到幸存者(ID:{survivorId})或工作站(ID:{workstationId})。");
             }
         }
 
-
-        // 更新所有工作站的生产状态，由 GameLoop 每帧调用
         public void UpdateAllWorkstations(float deltaTime)
         {
             if (mWorkstationModel == null || mSurvivorModel == null || mResourceModel == null)
@@ -231,10 +240,21 @@ namespace YourGameNamespace.Workstations
                 Debug.LogError("工作站系统 (WorkstationSystem) 在尝试更新所有工作站时，发现一个或多个必要的模型引用为空。请检查初始化过程。");
                 return;
             }
-            foreach (var station in mWorkstationModel.GetAllWorkstations())
+            foreach (var station in mWorkstationModel.GetAllWorkstations()) // Use field instead of GetModel
             {
                 station.UpdateProduction(deltaTime, mSurvivorModel, mResourceModel);
             }
         }
+
+        // Conceptual method for BuildingSystem to fetch costs - needs to be added to IWorkstationSystem if used by BuildingSystem
+        // public List<(GameResourceType resource, int amount)> GetWorkstationBuildCosts(WorkstationType type)
+        // {
+        //     if (mWorkstationBuildCosts.TryGetValue(type, out var costs))
+        //     {
+        //         return costs; // Consider returning a copy if external modification is a concern
+        //     }
+        //     Debug.LogWarning($"工作站类型 {type} 的建造成本在WorkstationSystem中未定义。");
+        //     return null;
+        // }
     }
 }

@@ -11,7 +11,7 @@ namespace YourGameNamespace.Buildings
     /// <summary>
     /// 建筑数据模型接口
     /// </summary>
-    public interface IBuildingModel : IModel
+    public interface IBuildingModel : QFIModel // Changed from IModel
     {
         /// <summary>
         /// 添加一个新建筑到模型中

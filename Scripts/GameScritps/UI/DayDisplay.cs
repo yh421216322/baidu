@@ -15,8 +15,8 @@ namespace YourGameNamespace.UI
         public TextMeshProUGUI baseHealthText;
         public TextMeshProUGUI housingCapacityText; // 新增：住房容量文本
 
-        private IGameDataModel mGameDataModel; // 使用接口
-        private ISurvivorModel mSurvivorModel; // 使用接口
+        private GameDataModel mGameDataModel; // Changed from IGameDataModel
+        private SurvivorModel mSurvivorModel; // Changed from ISurvivorModel
 
         private void Awake()
         {
@@ -41,11 +41,11 @@ namespace YourGameNamespace.UI
                 return;
             }
 
-            mGameDataModel = this.GetModel<IGameDataModel>();
-            mSurvivorModel = this.GetModel<ISurvivorModel>(); // 获取幸存者模型
+            mGameDataModel = this.GetModel<GameDataModel>(); // Use concrete class
+            mSurvivorModel = this.GetModel<SurvivorModel>(); // Use concrete class
 
-            if (mGameDataModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取核心游戏数据模型 (IGameDataModel)！");
-            if (mSurvivorModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取幸存者数据模型 (ISurvivorModel)！");
+            if (mGameDataModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取核心游戏数据模型 (GameDataModel)！");
+            if (mSurvivorModel == null) Debug.LogError("日期显示 (DayDisplay)：未能获取幸存者数据模型 (SurvivorModel)！");
 
             if (dayText == null || timeText == null || baseHealthText == null || housingCapacityText == null)
                 Debug.LogError("日期显示 (DayDisplay)：一个或多个必要的UI TextMeshPro组件未在Unity检视面板中分配！");

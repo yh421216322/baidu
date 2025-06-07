@@ -9,29 +9,31 @@ using YourGameNamespace.Commands;
 using System;
 using System.Collections.Generic; // Required for List
 
+using MyGameNamespace; // Assuming RegisterManager might be here, or it's global
+
 namespace YourGameNamespace.UI
 {
-    public class WorkstationManagementPanelController : MonoBehaviour, IController
+    public class WorkstationManagementPanelController : MonoBehaviour, IController, IPoolable // Added IPoolable
     {
         // UI 引用
-        public TextMeshProUGUI selectedWorkstationNameText;
+        public TextMeshProUGUI selectedWorkstationNameText; // 已在之前步骤中确认为TextMeshPro类型
         public Transform assignedSurvivorsContainer;  // 已分配幸存者列表容器
         public Transform availableSurvivorsContainer; // 可分配幸存者列表容器
         public GameObject survivorItemPrefab;         // 幸存者列表项预制件 (WorkstationAssignSurvivorItem_PF)
         public Button closeButton;
 
         private Guid mCurrentWorkstationId;
-        private WorkstationModel mWorkstationModel;
-        private SurvivorModel mSurvivorModel;
-        private IObjectPoolSystem mObjectPoolSystem;
+        private WorkstationModel mWorkstationModel; // Should use concrete type as per recent changes
+        private SurvivorModel mSurvivorModel;   // Should use concrete type
+        private ObjectPoolSystem mObjectPoolSystem; // Changed to concrete type
 
         private List<GameObject> mAssignedSurvivorItems = new List<GameObject>();
         private List<GameObject> mAvailableSurvivorItems = new List<GameObject>();
 
         void Awake()
         {
-            // QFramework 获取系统
-            mObjectPoolSystem = this.GetSystem<IObjectPoolSystem>();
+            // GetSystem calls will use concrete types after GetArchitecture() is fixed
+            // mObjectPoolSystem = this.GetSystem<ObjectPoolSystem>(); // Will be set in InitAndShow or similar
 
             if (closeButton != null)
             {
@@ -48,20 +50,27 @@ namespace YourGameNamespace.UI
             }
         }
 
-        public void Setup(Guid workstationId, WorkstationModel workstationModel, SurvivorModel survivorModel)
+        // Renamed from Setup to InitAndShow for consistency with other pooled panels
+        public void InitAndShow(Guid workstationId, WorkstationModel workstationModel, SurvivorModel survivorModel)
         {
             mCurrentWorkstationId = workstationId;
-            mWorkstationModel = workstationModel; // 从外部传入，确保获取的是最新的
-            mSurvivorModel = survivorModel;     // 从外部传入
+            // Systems/Models should be fetched via GetArchitecture() if not passed directly
+            // For this pattern, we assume they are passed in or fetched if this panel is managed by another controller that already has them.
+            // If this panel is spawned independently and needs to fetch, it should do so after GetArchitecture() is valid.
+            mObjectPoolSystem = this.GetSystem<ObjectPoolSystem>(); // Now uses concrete type
 
-            if (mWorkstationModel == null || mSurvivorModel == null) {
-                Debug.LogError("WorkstationManagementPanelController: WorkstationModel 或 SurvivorModel 未能正确初始化!");
-                ClosePanel();
+            // These models are passed in, which is fine.
+            mWorkstationModel = workstationModel;
+            mSurvivorModel = survivorModel;
+
+            if (mWorkstationModel == null || mSurvivorModel == null || mObjectPoolSystem == null) {
+                Debug.LogError("WorkstationManagementPanelController: Models or ObjectPoolSystem未能正确初始化!");
+                AttemptClosePanel(); // Try to recycle if possible
                 return;
             }
 
             RefreshPanelData();
-            gameObject.SetActive(true); // 确保面板可见
+            gameObject.SetActive(true);
             // TODO: 可以添加打开动画
         }
 
@@ -73,13 +82,14 @@ namespace YourGameNamespace.UI
             if (workstation == null)
             {
                 Debug.LogError($"WorkstationManagementPanelController: 未找到ID为 {mCurrentWorkstationId} 的工作站!");
-                ClosePanel();
+                AttemptClosePanel();
                 return;
             }
 
             if (selectedWorkstationNameText != null)
             {
-                selectedWorkstationNameText.text = $"管理工作站: {workstation.Type.ToString()} (ID: {workstation.Id.ToString().Substring(0, 4)})";
+                // TODO: 本地化工作站类型名称
+                selectedWorkstationNameText.text = $"管理: {workstation.Type} (容量: {workstation.AssignedSurvivorCount.Value}/{workstation.MaxAssignedSurvivors})";
             }
 
             PopulateSurvivorLists(workstation);
@@ -87,14 +97,11 @@ namespace YourGameNamespace.UI
 
         private void PopulateSurvivorLists(Workstation workstation)
         {
-            // 清理旧列表项
-            ClearSurvivorItems(mAssignedSurvivorItems, assignedSurvivorsContainer);
-            ClearSurvivorItems(mAvailableSurvivorItems, availableSurvivorsContainer);
-
-            mAssignedSurvivorItems.Clear();
-            mAvailableSurvivorItems.Clear();
+            ClearInstantiatedSurvivorItems(mAssignedSurvivorItems, assignedSurvivorsContainer);
+            ClearInstantiatedSurvivorItems(mAvailableSurvivorItems, availableSurvivorsContainer);
 
             List<Survivor> allSurvivors = mSurvivorModel.GetAllSurvivors();
+            bool canAssignMore = workstation.AssignedSurvivorIds.Count < workstation.MaxAssignedSurvivors;
 
             foreach (Survivor survivor in allSurvivors)
             {
@@ -102,9 +109,8 @@ namespace YourGameNamespace.UI
 
                 if (isAssignedToCurrentWorkstation)
                 {
-                    // 实例化并设置已分配的幸存者项
-                    GameObject itemGO = mObjectPoolSystem.Instantiate(survivorItemPrefab, assignedSurvivorsContainer);
-                    if (itemGO == null) continue;
+                    GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefab.name, assignedSurvivorsContainer); // Assuming prefab is in Resources or pool is pre-warmed
+                    if (itemGO == null) { Debug.LogError("Failed to spawn survivorItemPrefab for assigned list"); continue; }
 
                     var itemUI = itemGO.GetComponent<WorkstationAssignSurvivorItemUI>();
                     if (itemUI != null)
@@ -113,11 +119,11 @@ namespace YourGameNamespace.UI
                     }
                     mAssignedSurvivorItems.Add(itemGO);
                 }
-                else if (survivor.Status.Value == SurvivorStatus.Idle) // 仅显示空闲的幸存者作为可分配
+                // Only show in available list if survivor is Idle AND there's space
+                else if (survivor.Status.Value == SurvivorStatus.Idle && canAssignMore)
                 {
-                    // 实例化并设置可分配的幸存者项
-                    GameObject itemGO = mObjectPoolSystem.Instantiate(survivorItemPrefab, availableSurvivorsContainer);
-                    if (itemGO == null) continue;
+                    GameObject itemGO = mObjectPoolSystem.Spawn(survivorItemPrefab.name, availableSurvivorsContainer);
+                     if (itemGO == null) { Debug.LogError("Failed to spawn survivorItemPrefab for available list"); continue; }
 
                     var itemUI = itemGO.GetComponent<WorkstationAssignSurvivorItemUI>();
                     if (itemUI != null)
@@ -129,18 +135,14 @@ namespace YourGameNamespace.UI
             }
         }
 
-        private void ClearSurvivorItems(List<GameObject> items, Transform container)
+        private void ClearInstantiatedSurvivorItems(List<GameObject> itemsList, Transform container) // Renamed for clarity
         {
-            foreach (GameObject item in items)
+            if (mObjectPoolSystem == null) return;
+            foreach (GameObject item in itemsList)
             {
-                mObjectPoolSystem.Recycle(item);
+                if(item != null) mObjectPoolSystem.Recycle(item);
             }
-            items.Clear();
-            // 如果对象池系统不负责移除子对象，则需要手动移除
-            // foreach (Transform child in container)
-            // {
-            //     Destroy(child.gameObject); // 或者使用对象池回收
-            // }
+            itemsList.Clear();
         }
 
 
@@ -148,9 +150,7 @@ namespace YourGameNamespace.UI
         {
             Debug.Log($"[UI操作] 请求分配幸存者 {survivorId} 到工作站 {workstationId}");
             this.SendCommand(new AssignSurvivorToWorkstationCommand(survivorId, workstationId));
-            // 理想情况下，命令执行后会有事件通知，或者我们在这里延迟刷新
-            // 为简单起见，直接刷新或依赖事件
-            // TODO: 考虑监听 AssignSurvivorToWorkstationCommandCompletedEvent (如果存在)
+            // TODO: Listen to AssignSurvivorToWorkstationResultEvent for more robust UI update
             RefreshPanelData();
         }
 
@@ -158,50 +158,60 @@ namespace YourGameNamespace.UI
         {
             Debug.Log($"[UI操作] 请求从工作站 {workstationId} 解除分配幸存者 {survivorId}");
             this.SendCommand(new UnassignSurvivorFromWorkstationCommand(survivorId, workstationId));
-            // TODO: 考虑监听 UnassignSurvivorFromWorkstationCommandCompletedEvent (如果存在)
+            // TODO: Listen to command result event
             RefreshPanelData();
         }
 
         private void ClosePanel()
         {
             // TODO: 可以添加关闭动画
-            gameObject.SetActive(false); // 先隐藏
-            mObjectPoolSystem.Recycle(gameObject); // 然后回收
-            // 或者通知 WorkstationDisplay 来处理回收
-            // this.SendEvent<WorkstationManagementPanelClosedEvent>(new WorkstationManagementPanelClosedEvent());
+            if (mObjectPoolSystem != null) {
+                 mObjectPoolSystem.Recycle(gameObject); // This will call OnRecycled
+            } else {
+                gameObject.SetActive(false); // Fallback
+                OnRecycled(); // Manual call if no pool
+            }
         }
+
+        private void AttemptClosePanel() // Used when setup fails
+        {
+            if (mObjectPoolSystem != null && IsRecycled == false) { // Check IsRecycled if available
+                 mObjectPoolSystem.Recycle(gameObject);
+            } else if (gameObject.activeSelf) {
+                gameObject.SetActive(false);
+            }
+        }
+
 
         public IArchitecture GetArchitecture()
         {
-            return GlobalGameArchitecture.Interface; // 假设有一个全局访问点
+            return RegisterManager.Interface; // Changed to RegisterManager
         }
 
-        void OnDestroy() {
+        // --- IPoolable Implementation ---
+        public void OnRecycled()
+        {
+            // Debug.Log("WorkstationManagementPanelController OnRecycled"); // Chinese Log
+            ClearInstantiatedSurvivorItems(mAssignedSurvivorItems, assignedSurvivorsContainer);
+            ClearInstantiatedSurvivorItems(mAvailableSurvivorItems, availableSurvivorsContainer);
+            // Event listeners should be managed with AddTo(mEventUnregisters) or similar if this panel itself registers global events
+            // For button listeners, OnDestroy is one place, or clear them here if necessary.
+            // If this panel registers to QFramework global events, they should be unregistered here or via UnRegisterWhenGameObjectDestroyed.
+            gameObject.SetActive(false);
+        }
+        public bool IsRecycled { get; set; }
+
+
+        void OnDestroy() { // Unity's OnDestroy
             if (closeButton != null) {
-                closeButton.onClick.RemoveListener(ClosePanel);
+                closeButton.onClick.RemoveAllListeners();
             }
-            // 清理列表项，以防对象池未完全处理
-            ClearSurvivorItems(mAssignedSurvivorItems, assignedSurvivorsContainer);
-            ClearSurvivorItems(mAvailableSurvivorItems, availableSurvivorsContainer);
+            // Ensure items are cleared if panel is destroyed instead of recycled
+            // This might double-clear if ClosePanel->Recycle was called, but Recycle should handle it.
+            ClearInstantiatedSurvivorItems(mAssignedSurvivorItems, assignedSurvivorsContainer);
+            ClearInstantiatedSurvivorItems(mAvailableSurvivorItems, availableSurvivorsContainer);
         }
     }
 
-    // 假设的全局架构访问点，需要项目中实际存在
-    public static class GlobalGameArchitecture
-    {
-        public static GameArchitecture Interface {
-            get {
-                // 这个实现取决于你的项目如何设置 GameArchitecture 的单例或服务定位器
-                // 例如，如果 GameInitializer 创建并持有一个静态实例:
-                // return GameInitializer.Instance?.GameArch;
-                // 或者，如果 GameArchitecture 自身是单例:
-                // return GameArchitecture.Instance;
-                // 此处仅为示例，需要替换为项目中实际的访问方式
-                if (_interface == null) _interface = new GameArchitecture(); // 极简示例
-                return _interface;
-            }
-            set => _interface = value; // 允许外部设置，例如在 GameInitializer 中
-        }
-        private static GameArchitecture _interface;
-    }
+    // Removed GlobalGameArchitecture static class
 }

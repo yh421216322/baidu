@@ -22,10 +22,10 @@ namespace YourGameNamespace.Commands
 
         protected override void OnExecute()
         {
-            var buildingSystem = this.GetSystem<IBuildingSystem>();
+            var buildingSystem = this.GetSystem<BuildingSystem>(); // Changed from IBuildingSystem
             if (buildingSystem == null)
             {
-                // Debug.LogError($"BuildBuildingCommand: 建筑系统 (IBuildingSystem) 未找到！"); // Chinese Log
+                // Debug.LogError($"BuildBuildingCommand: 建筑系统 (BuildingSystem) 未找到！"); // Chinese Log
                 this.SendEvent(new BuildBuildingResultEvent {
                     BuildingTypeAttempted = mBuildingType,
                     Success = false,

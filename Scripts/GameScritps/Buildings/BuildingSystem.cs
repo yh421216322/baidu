@@ -13,7 +13,7 @@ namespace YourGameNamespace.Buildings
     /// <summary>
     /// 建筑系统接口，负责建筑的建造逻辑和效果应用。
     /// </summary>
-    public interface IBuildingSystem : ISystem
+    public interface IBuildingSystem : QFISystem // Changed from ISystem
     {
         /// <summary>
         /// 尝试建造一个指定类型的建筑。
@@ -33,25 +33,25 @@ namespace YourGameNamespace.Buildings
 
     public class BuildingSystem : AbstractSystem, IBuildingSystem
     {
-        private IResourceModel mResourceModel;
-        private IBuildingModel mBuildingModel;
-        private IGameDataModel mGameDataModel;
-        private IWorkstationSystem mWorkstationSystem; // 主要用于获取成本信息
+        private ResourceModel mResourceModel; // Changed from IResourceModel
+        private BuildingModel mBuildingModel; // Changed from IBuildingModel
+        private GameDataModel mGameDataModel; // Changed from IGameDataModel
+        private WorkstationSystem mWorkstationSystem; // Changed from IWorkstationSystem, 主要用于获取成本信息
 
         // 建筑成本字典
         private Dictionary<BuildingType, List<(GameResourceType resource, int amount)>> mBuildingCosts;
 
         protected override void OnInit()
         {
-            mResourceModel = this.GetModel<IResourceModel>();
-            mBuildingModel = this.GetModel<IBuildingModel>();
-            mGameDataModel = this.GetModel<IGameDataModel>();
-            mWorkstationSystem = this.GetSystem<IWorkstationSystem>(); // 获取工作站系统引用
+            mResourceModel = this.GetModel<ResourceModel>(); // Use concrete class
+            mBuildingModel = this.GetModel<BuildingModel>(); // Use concrete class
+            mGameDataModel = this.GetModel<GameDataModel>(); // Use concrete class
+            mWorkstationSystem = this.GetSystem<WorkstationSystem>(); // Use concrete class
 
-            if (mResourceModel == null) Debug.LogError("建筑系统：资源模型 (IResourceModel) 未找到！");
-            if (mBuildingModel == null) Debug.LogError("建筑系统：建筑模型 (IBuildingModel) 未找到！");
-            if (mGameDataModel == null) Debug.LogError("建筑系统：游戏数据模型 (IGameDataModel) 未找到！");
-            if (mWorkstationSystem == null) Debug.LogError("建筑系统：工作站系统 (IWorkstationSystem) 未找到！");
+            if (mResourceModel == null) Debug.LogError("建筑系统：资源模型 (ResourceModel) 未找到！");
+            if (mBuildingModel == null) Debug.LogError("建筑系统：建筑模型 (BuildingModel) 未找到！");
+            if (mGameDataModel == null) Debug.LogError("建筑系统：游戏数据模型 (GameDataModel) 未找到！");
+            if (mWorkstationSystem == null) Debug.LogError("建筑系统：工作站系统 (WorkstationSystem) 未找到！");
 
 
             InitializeBuildingCosts();

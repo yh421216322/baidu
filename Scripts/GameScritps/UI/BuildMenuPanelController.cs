@@ -21,9 +21,9 @@ namespace YourGameNamespace.UI
         public Button closeButton; // 关闭按钮
         public string buildMenuItemPrefabPath = "Prefabs/UI/Items/BuildMenuItem_PF";
 
-        private IObjectPoolSystem mObjectPoolSystem;
-        private IBuildingSystem mBuildingSystem;
-        private IResourceModel mResourceModel;
+        private ObjectPoolSystem mObjectPoolSystem; // Changed from IObjectPoolSystem
+        private BuildingSystem mBuildingSystem; // Changed from IBuildingSystem
+        private ResourceModel mResourceModel;   // Changed from IResourceModel
 
         private List<GameObject> mInstantiatedItems = new List<GameObject>();
         private List<IUnRegister> mEventUnregisters = new List<IUnRegister>();
@@ -38,18 +38,18 @@ namespace YourGameNamespace.UI
         public void InitAndShow()
         {
             // 获取系统和模型引用
-            mObjectPoolSystem = this.GetSystem<IObjectPoolSystem>();
-            mBuildingSystem = this.GetSystem<IBuildingSystem>();
-            mResourceModel = this.GetModel<IResourceModel>();
+            mObjectPoolSystem = this.GetSystem<ObjectPoolSystem>(); // Use concrete class
+            mBuildingSystem = this.GetSystem<BuildingSystem>(); // Use concrete class
+            mResourceModel = this.GetModel<ResourceModel>(); // Use concrete class
 
             // 进行必要的空检查
             if (buildMenuItemsContainer == null) Debug.LogError("BuildMenuPanelController: 建造菜单项容器 (buildMenuItemsContainer) 未在检视面板中分配!");
             if (closeButton == null) Debug.LogError("BuildMenuPanelController: 关闭按钮 (closeButton) 未在检视面板中分配!");
             if (string.IsNullOrEmpty(buildMenuItemPrefabPath)) Debug.LogError("BuildMenuPanelController: 建造菜单项预制件路径 (buildMenuItemPrefabPath) 未设置!");
 
-            if (mObjectPoolSystem == null) Debug.LogError("建造菜单：对象池系统 (IObjectPoolSystem) 未找到！");
-            if (mBuildingSystem == null) Debug.LogError("建造菜单：建筑系统 (IBuildingSystem) 未找到！");
-            if (mResourceModel == null) Debug.LogError("建造菜单：资源模型 (IResourceModel) 未找到！");
+            if (mObjectPoolSystem == null) Debug.LogError("建造菜单：对象池系统 (ObjectPoolSystem) 未找到！");
+            if (mBuildingSystem == null) Debug.LogError("建造菜单：建筑系统 (BuildingSystem) 未找到！");
+            if (mResourceModel == null) Debug.LogError("建造菜单：资源模型 (ResourceModel) 未找到！");
 
             // 设置关闭按钮监听
             if (closeButton != null) // 再次检查以防万一
