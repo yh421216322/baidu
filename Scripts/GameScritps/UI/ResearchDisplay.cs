@@ -48,18 +48,29 @@ namespace YourGameNamespace.UI
 
         private void Awake()
         {
-            // Assuming resource texts are directly assigned in Inspector. If not, use transform.Find.
-            // e.g. researchPointsText = researchPointsText ?? transform.Find("SomePanel/ResearchPointsText_TMP")?.GetComponent<Text>();
+            // Resource Texts - Assuming direct assignment in Inspector, but adding null checks
+            if (foodText == null) Debug.LogError("ResearchDisplay: foodText (Text) 未在检视面板中链接!");
+            if (powerText == null) Debug.LogError("ResearchDisplay: powerText (Text) 未在检视面板中链接!");
+            if (ammoText == null) Debug.LogError("ResearchDisplay: ammoText (Text) 未在检视面板中链接!");
+            if (medicineText == null) Debug.LogError("ResearchDisplay: medicineText (Text) 未在检视面板中链接!");
+            if (researchPointsText == null) Debug.LogError("ResearchDisplay: researchPointsText (Text) 未在检视面板中链接!");
+            if (electronicPartsText == null) Debug.LogError("ResearchDisplay: electronicPartsText (Text) 未在检视面板中链接!");
 
+            // Technology List Parents
+            if (availableTechUIParent == null) Debug.LogError("ResearchDisplay: availableTechUIParent (Transform) 未在检视面板中链接!");
+            if (inProgressTechUIParent == null) Debug.LogWarning("ResearchDisplay: inProgressTechUIParent (Transform) 未在检视面板中链接 (如果使用)."); // May not always be used if current research is separate
+            if (completedTechUIParent == null) Debug.LogError("ResearchDisplay: completedTechUIParent (Transform) 未在检视面板中链接!");
+
+            // Current Research Info - Fallback to Find if not linked, then check
             currentResearchNameText = currentResearchNameText ?? transform.Find("CurrentResearchNameText_Element")?.GetComponent<Text>();
             currentResearchDescriptionText = currentResearchDescriptionText ?? transform.Find("CurrentResearchDescriptionText_Element")?.GetComponent<Text>();
             researchProgressSlider = researchProgressSlider ?? transform.Find("ResearchProgressSlider_Element")?.GetComponent<Slider>();
             researchProgressPercentageText = researchProgressPercentageText ?? transform.Find("ResearchProgressPercentageText_Element")?.GetComponent<Text>();
 
-            if (researchPointsText == null) Debug.LogError("ResearchDisplay: researchPointsText (Text) not found or linked.");
-            if (currentResearchNameText == null) Debug.LogError("ResearchDisplay: currentResearchNameText (Text) not found or linked.");
-            if (researchProgressSlider == null) Debug.LogError("ResearchDisplay: researchProgressSlider (Slider) not found or linked.");
-            if (researchProgressPercentageText == null) Debug.LogError("ResearchDisplay: researchProgressPercentageText (Text) not found or linked.");
+            if (currentResearchNameText == null) Debug.LogError("ResearchDisplay: currentResearchNameText (Text) 未能获取或链接!");
+            if (currentResearchDescriptionText == null) Debug.LogWarning("ResearchDisplay: currentResearchDescriptionText (Text) 未能获取或链接 (可选).");
+            if (researchProgressSlider == null) Debug.LogError("ResearchDisplay: researchProgressSlider (Slider) 未能获取或链接!");
+            if (researchProgressPercentageText == null) Debug.LogError("ResearchDisplay: researchProgressPercentageText (Text) 未能获取或链接!");
         }
 
         void Start()
